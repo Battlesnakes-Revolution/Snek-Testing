@@ -213,7 +213,7 @@ export default function App() {
         password: adminPassword,
         clientId,
       });
-      if (!result.ok) {
+      if (!result.ok || !result.token) {
         setAdminError(result.error ?? "Login failed.");
         return;
       }
@@ -1008,7 +1008,6 @@ function BoardEditor({
   activeSnakeId: string;
 }) {
   const handleCellClick = (x: number, y: number) => {
-    const key = `${x},${y}`;
     const toggleCoordinate = (
       list: Coordinate[],
       nextValue = true,
