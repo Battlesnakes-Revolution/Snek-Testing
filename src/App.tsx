@@ -1366,7 +1366,7 @@ function BoardView({
                           right: "-4px",
                           top: "3px",
                           bottom: "3px",
-                          width: "4px",
+                          width: "7px",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1378,7 +1378,7 @@ function BoardView({
                           left: "-4px",
                           top: "3px",
                           bottom: "3px",
-                          width: "4px",
+                          width: "7px",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1390,7 +1390,7 @@ function BoardView({
                           top: "-4px",
                           left: "3px",
                           right: "3px",
-                          height: "4px",
+                          height: "7px",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1402,7 +1402,7 @@ function BoardView({
                           bottom: "-4px",
                           left: "3px",
                           right: "3px",
-                          height: "4px",
+                          height: "7px",
                           background: snakeCell?.color,
                         }}
                       />
