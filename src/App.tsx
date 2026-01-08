@@ -1306,15 +1306,13 @@ function BoardView({
   });
   const columns = Array.from({ length: board.width }, (_, index) => index);
 
-  const gapPx = 4;
-
   return (
     <div className="w-full">
       <div
         className="grid"
         style={{
           gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
-          gap: `${gapPx}px`,
+          gap: "4px",
         }}
       >
         {rows.map((y) =>
@@ -1336,14 +1334,6 @@ function BoardView({
             const moveClass =
               moveTargetKey === key ? "ring-2 ring-slate-700/60" : "";
             const hasSnake = Boolean(snakeCell);
-            const neighbor = (dx: number, dy: number) =>
-              positionMap.snakeCells.get(`${x + dx},${y + dy}`);
-            const sameSnake = (cell?: { snakeId: string } | undefined) =>
-              cell && snakeCell && cell.snakeId === snakeCell.snakeId;
-            const connectRight = hasSnake && sameSnake(neighbor(1, 0));
-            const connectLeft = hasSnake && sameSnake(neighbor(-1, 0));
-            const connectUp = hasSnake && sameSnake(neighbor(0, 1));
-            const connectDown = hasSnake && sameSnake(neighbor(0, -1));
             return (
               <button
                 key={key}
@@ -1353,28 +1343,13 @@ function BoardView({
                 style={{ background }}
               >
                 {hasSnake ? (
-                  <>
-                    <span
-                      className="absolute pointer-events-none rounded-sm"
-                      style={{
-                        inset: "2px",
-                        background: snakeCell?.color,
-                      }}
-                    />
-                    {connectRight || connectLeft || connectUp || connectDown ? (
-                      <span
-                        className="absolute pointer-events-none"
-                        style={{
-                          left: connectLeft ? `${-gapPx}px` : "2px",
-                          right: connectRight ? `${-gapPx}px` : "2px",
-                          top: connectUp ? `${-gapPx}px` : "2px",
-                          bottom: connectDown ? `${-gapPx}px` : "2px",
-                          background: snakeCell?.color,
-                          borderRadius: "2px",
-                        }}
-                      />
-                    ) : null}
-                  </>
+                  <span
+                    className="absolute pointer-events-none rounded-sm"
+                    style={{
+                      inset: "3px",
+                      background: snakeCell?.color,
+                    }}
+                  />
                 ) : null}
                 {moveTargetKey === key ? (
                   <span className="absolute inset-0 rounded-sm bg-slate-900/10 pointer-events-none" />
