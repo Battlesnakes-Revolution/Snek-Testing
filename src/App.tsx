@@ -1331,22 +1331,11 @@ function BoardView({
             const connectLeft = hasSnake && sameSnake(neighbor(-1, 0));
             const connectUp = hasSnake && sameSnake(neighbor(0, 1));
             const connectDown = hasSnake && sameSnake(neighbor(0, -1));
-            const gridColor = "#1e293b";
-            const cellBackground = hasSnake
-              ? snakeCell?.color
-              : isHazard
-                ? "rgba(220, 38, 38, 0.85)"
-                : isFood
-                  ? "rgba(101, 163, 13, 0.75)"
-                  : "rgba(255, 255, 255, 0.8)";
-            const borderStyle = hasSnake
-              ? {
-                  borderTopColor: connectUp ? snakeCell?.color : gridColor,
-                  borderBottomColor: connectDown ? snakeCell?.color : gridColor,
-                  borderLeftColor: connectLeft ? snakeCell?.color : gridColor,
-                  borderRightColor: connectRight ? snakeCell?.color : gridColor,
-                }
-              : {};
+            const cellBackground = isHazard
+              ? "rgba(220, 38, 38, 0.85)"
+              : isFood
+                ? "rgba(101, 163, 13, 0.75)"
+                : "rgba(255, 255, 255, 0.8)";
             return (
               <button
                 key={key}
@@ -1354,13 +1343,71 @@ function BoardView({
                 onClick={onCellClick ? () => onCellClick(x, y) : undefined}
                 className={`aspect-square w-full border p-0 leading-none relative flex items-center justify-center ${moveClass}`}
                 style={{
-                  background: cellBackground,
+                  background: hasSnake ? "transparent" : cellBackground,
                   borderWidth: "1px",
                   borderStyle: "solid",
-                  borderColor: hasSnake ? undefined : "#cbd5e1",
-                  ...borderStyle,
+                  borderColor: "#cbd5e1",
                 }}
               >
+                {hasSnake ? (
+                  <>
+                    <span
+                      className="absolute pointer-events-none"
+                      style={{
+                        inset: "4px",
+                        background: snakeCell?.color,
+                      }}
+                    />
+                    {connectRight ? (
+                      <span
+                        className="absolute pointer-events-none"
+                        style={{
+                          right: "-1px",
+                          top: "4px",
+                          bottom: "4px",
+                          width: "5px",
+                          background: snakeCell?.color,
+                        }}
+                      />
+                    ) : null}
+                    {connectLeft ? (
+                      <span
+                        className="absolute pointer-events-none"
+                        style={{
+                          left: "-1px",
+                          top: "4px",
+                          bottom: "4px",
+                          width: "5px",
+                          background: snakeCell?.color,
+                        }}
+                      />
+                    ) : null}
+                    {connectUp ? (
+                      <span
+                        className="absolute pointer-events-none"
+                        style={{
+                          top: "-1px",
+                          left: "4px",
+                          right: "4px",
+                          height: "5px",
+                          background: snakeCell?.color,
+                        }}
+                      />
+                    ) : null}
+                    {connectDown ? (
+                      <span
+                        className="absolute pointer-events-none"
+                        style={{
+                          bottom: "-1px",
+                          left: "4px",
+                          right: "4px",
+                          height: "5px",
+                          background: snakeCell?.color,
+                        }}
+                      />
+                    ) : null}
+                  </>
+                ) : null}
                 {moveTargetKey === key ? (
                   <span className="absolute inset-0 rounded-sm bg-slate-900/10 pointer-events-none" />
                 ) : null}
