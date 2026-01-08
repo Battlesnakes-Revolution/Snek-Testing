@@ -1362,8 +1362,8 @@ function BoardView({
                         style={{
                           left: connectLeft ? `${-gapPx}px` : 0,
                           right: connectRight ? `${-gapPx}px` : 0,
-                          top: connectDown ? `${-gapPx}px` : 0,
-                          bottom: connectUp ? `${-gapPx}px` : 0,
+                          top: connectUp ? `${-gapPx}px` : 0,
+                          bottom: connectDown ? `${-gapPx}px` : 0,
                           background: snakeCell?.color,
                           borderRadius: "2px",
                         }}
