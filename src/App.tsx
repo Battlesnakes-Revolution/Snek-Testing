@@ -1358,32 +1358,29 @@ function BoardView({
                   <>
                     {connectRight ? (
                       <span
-                        className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                        className="absolute top-0 bottom-0 pointer-events-none"
                         style={{
                           left: "100%",
                           width: `${gapPx}px`,
-                          height: "60%",
                           background: snakeCell?.color,
                         }}
                       />
                     ) : null}
                     {connectLeft ? (
                       <span
-                        className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                        className="absolute top-0 bottom-0 pointer-events-none"
                         style={{
                           right: "100%",
                           width: `${gapPx}px`,
-                          height: "60%",
                           background: snakeCell?.color,
                         }}
                       />
                     ) : null}
                     {connectUp ? (
                       <span
-                        className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+                        className="absolute left-0 right-0 pointer-events-none"
                         style={{
                           top: "100%",
-                          width: "60%",
                           height: `${gapPx}px`,
                           background: snakeCell?.color,
                         }}
@@ -1391,10 +1388,9 @@ function BoardView({
                     ) : null}
                     {connectDown ? (
                       <span
-                        className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+                        className="absolute left-0 right-0 pointer-events-none"
                         style={{
                           bottom: "100%",
-                          width: "60%",
                           height: `${gapPx}px`,
                           background: snakeCell?.color,
                         }}
