@@ -1312,7 +1312,6 @@ function BoardView({
         className="grid"
         style={{
           gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
-          gap: "4px",
         }}
       >
         {rows.map((y) =>
@@ -1321,16 +1320,6 @@ function BoardView({
             const snakeCell = positionMap.snakeCells.get(key);
             const isHazard = positionMap.hazardSet.has(key);
             const isFood = positionMap.foodSet.has(key);
-            const baseStyles =
-              "aspect-square w-full rounded-sm border p-0 leading-none relative";
-            const borderColor = snakeCell
-              ? "border-transparent"
-              : "border-slate-200";
-            const background = isHazard
-              ? "rgba(220, 38, 38, 0.85)"
-              : isFood
-                ? "rgba(101, 163, 13, 0.75)"
-                : "rgba(255, 255, 255, 0.8)";
             const moveClass =
               moveTargetKey === key ? "ring-2 ring-slate-700/60" : "";
             const hasSnake = Boolean(snakeCell);
@@ -1342,73 +1331,36 @@ function BoardView({
             const connectLeft = hasSnake && sameSnake(neighbor(-1, 0));
             const connectUp = hasSnake && sameSnake(neighbor(0, 1));
             const connectDown = hasSnake && sameSnake(neighbor(0, -1));
+            const gridColor = "#1e293b";
+            const cellBackground = hasSnake
+              ? snakeCell?.color
+              : isHazard
+                ? "rgba(220, 38, 38, 0.85)"
+                : isFood
+                  ? "rgba(101, 163, 13, 0.75)"
+                  : "rgba(255, 255, 255, 0.8)";
+            const borderStyle = hasSnake
+              ? {
+                  borderTopColor: connectUp ? snakeCell?.color : gridColor,
+                  borderBottomColor: connectDown ? snakeCell?.color : gridColor,
+                  borderLeftColor: connectLeft ? snakeCell?.color : gridColor,
+                  borderRightColor: connectRight ? snakeCell?.color : gridColor,
+                }
+              : {};
             return (
               <button
                 key={key}
                 type="button"
                 onClick={onCellClick ? () => onCellClick(x, y) : undefined}
-                className={`${baseStyles} ${borderColor} ${moveClass} flex items-center justify-center`}
-                style={{ background }}
+                className={`aspect-square w-full border p-0 leading-none relative flex items-center justify-center ${moveClass}`}
+                style={{
+                  background: cellBackground,
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                  borderColor: hasSnake ? undefined : "#cbd5e1",
+                  ...borderStyle,
+                }}
               >
-                {hasSnake ? (
-                  <>
-                    <span
-                      className="absolute pointer-events-none rounded-sm"
-                      style={{
-                        inset: "3px",
-                        background: snakeCell?.color,
-                      }}
-                    />
-                    {connectRight ? (
-                      <span
-                        className="absolute pointer-events-none"
-                        style={{
-                          right: "-4px",
-                          top: "3px",
-                          bottom: "3px",
-                          width: "7px",
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectLeft ? (
-                      <span
-                        className="absolute pointer-events-none"
-                        style={{
-                          left: "-4px",
-                          top: "3px",
-                          bottom: "3px",
-                          width: "7px",
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectUp ? (
-                      <span
-                        className="absolute pointer-events-none"
-                        style={{
-                          top: "-4px",
-                          left: "3px",
-                          right: "3px",
-                          height: "7px",
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectDown ? (
-                      <span
-                        className="absolute pointer-events-none"
-                        style={{
-                          bottom: "-4px",
-                          left: "3px",
-                          right: "3px",
-                          height: "7px",
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                  </>
-                ) : null}
                 {moveTargetKey === key ? (
                   <span className="absolute inset-0 rounded-sm bg-slate-900/10 pointer-events-none" />
                 ) : null}
