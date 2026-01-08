@@ -294,7 +294,7 @@ export default function App() {
     try {
       const normalized = normalizeEditorState(editorState);
       if (editingTestId) {
-        await updateTest({
+        const updated = await updateTest({
           adminToken,
           id: editingTestId,
           name: normalized.name,
@@ -304,8 +304,11 @@ export default function App() {
           youId: normalized.youId,
           expectedSafeMoves: normalized.expectedSafeMoves,
         });
+        if (updated) {
+          handleLoadTest(updated as Test);
+        }
       } else {
-        await createTest({
+        const created = await createTest({
           adminToken,
           name: normalized.name,
           board: normalized.board,
@@ -314,10 +317,10 @@ export default function App() {
           youId: normalized.youId,
           expectedSafeMoves: normalized.expectedSafeMoves,
         });
+        if (created) {
+          handleLoadTest(created as Test);
+        }
       }
-      setEditingTestId(null);
-      setEditorState(DEFAULT_EDITOR_STATE);
-      setActiveSnakeId(DEFAULT_EDITOR_STATE.snakes[0].id);
     } catch (error) {
       setAdminError(error instanceof Error ? error.message : "Save failed.");
     }
@@ -1177,7 +1180,11 @@ function TestCard({
           {status}
         </span>
       </div>
-      <BoardView board={testItem.board} youId={testItem.youId} />
+      <BoardView
+        board={testItem.board}
+        youId={testItem.youId}
+        move={result?.move ?? null}
+      />
       <div className="flex flex-col gap-2 text-sm text-slate-600">
         <p>
           Safe moves:{" "}
@@ -1210,10 +1217,12 @@ function BoardView({
   board,
   youId,
   onCellClick,
+  move,
 }: {
   board: Board;
   youId: string;
   onCellClick?: (x: number, y: number) => void;
+  move?: string | null;
 }) {
   const positionMap = useMemo(() => {
     const hazardSet = new Set(board.hazards.map((pos) => `${pos.x},${pos.y}`));
@@ -1256,18 +1265,51 @@ function BoardView({
     return { hazardSet, foodSet, snakeCells };
   }, [board, youId]);
 
+  const moveTargetKey = useMemo(() => {
+    if (!move) {
+      return null;
+    }
+    const youSnake = board.snakes.find((snakeItem) => snakeItem.id === youId);
+    if (!youSnake) {
+      return null;
+    }
+    const offsets: Record<string, Coordinate> = {
+      up: { x: 0, y: 1 },
+      down: { x: 0, y: -1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 },
+    };
+    const offset = offsets[move];
+    if (!offset) {
+      return null;
+    }
+    const target = {
+      x: youSnake.head.x + offset.x,
+      y: youSnake.head.y + offset.y,
+    };
+    if (
+      target.x < 0 ||
+      target.y < 0 ||
+      target.x >= board.width ||
+      target.y >= board.height
+    ) {
+      return null;
+    }
+    return `${target.x},${target.y}`;
+  }, [board, move, youId]);
+
   const rows = Array.from({ length: board.height }, (_, index) => {
     return board.height - 1 - index;
   });
   const columns = Array.from({ length: board.width }, (_, index) => index);
 
   return (
-    <div className="w-full overflow-auto">
+    <div className="w-full">
       <div
-        className="grid gap-1"
+        className="grid"
         style={{
-          gridTemplateColumns: `repeat(${board.width}, 28px)`,
-          gridAutoRows: "28px",
+          gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
+          gap: "4px",
         }}
       >
         {rows.map((y) =>
@@ -1276,7 +1318,8 @@ function BoardView({
             const snakeCell = positionMap.snakeCells.get(key);
             const isHazard = positionMap.hazardSet.has(key);
             const isFood = positionMap.foodSet.has(key);
-            const baseStyles = "h-7 w-7 rounded-sm border";
+            const baseStyles =
+              "aspect-square w-full rounded-sm border p-0 leading-none relative";
             const borderColor = snakeCell?.isYou
               ? "border-slate-900"
               : "border-slate-200";
@@ -1287,22 +1330,31 @@ function BoardView({
                 : isFood
                   ? "rgba(101, 163, 13, 0.75)"
                   : "rgba(255, 255, 255, 0.8)";
+            const moveClass =
+              moveTargetKey === key ? "ring-2 ring-slate-700/60" : "";
             return (
               <button
                 key={key}
                 type="button"
                 onClick={onCellClick ? () => onCellClick(x, y) : undefined}
-                className={`${baseStyles} ${borderColor} flex items-center justify-center`}
+                className={`${baseStyles} ${borderColor} ${moveClass} flex items-center justify-center`}
                 style={{ background }}
               >
+                {moveTargetKey === key ? (
+                  <span className="absolute inset-0 rounded-sm bg-slate-900/10 pointer-events-none" />
+                ) : null}
                 {snakeCell?.type === "head" ? (
-                  <span className="h-2 w-2 rounded-full bg-white/90" />
+                  <span className="relative z-10 h-2 w-2 rounded-full bg-white/90" />
                 ) : null}
                 {!snakeCell && isHazard ? (
-                  <span className="text-[10px] text-white font-bold">!</span>
+                  <span className="relative z-10 text-[10px] text-white font-bold">
+                    !
+                  </span>
                 ) : null}
                 {!snakeCell && isFood ? (
-                  <span className="text-[10px] text-white font-bold">+</span>
+                  <span className="relative z-10 text-[10px] text-white font-bold">
+                    +
+                  </span>
                 ) : null}
               </button>
             );

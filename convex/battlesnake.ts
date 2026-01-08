@@ -132,7 +132,7 @@ export const createTest = mutation({
       throw new Error("youId must match a snake in the board.");
     }
     const createdAt = Date.now();
-    return await ctx.db.insert("tests", {
+    const id = await ctx.db.insert("tests", {
       name: args.name,
       board: args.board,
       game: args.game,
@@ -141,6 +141,7 @@ export const createTest = mutation({
       expectedSafeMoves: args.expectedSafeMoves,
       createdAt,
     });
+    return await ctx.db.get(id);
   },
 });
 
@@ -171,6 +172,7 @@ export const updateTest = mutation({
       youId: args.youId,
       expectedSafeMoves: args.expectedSafeMoves,
     });
+    return await ctx.db.get(args.id);
   },
 });
 

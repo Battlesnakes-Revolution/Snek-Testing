@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "start": "serve -s dist -l 5000"
+    "start": "serve -l 5000"
   },
   "dependencies": {
     "convex": "^1.31.0",
