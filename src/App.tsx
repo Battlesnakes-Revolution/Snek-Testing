@@ -1356,43 +1356,16 @@ function BoardView({
               >
                 {hasSnake ? (
                   <>
-                    {connectRight ? (
+                    {connectRight || connectLeft || connectUp || connectDown ? (
                       <span
-                        className="absolute top-0 bottom-0 pointer-events-none"
+                        className="absolute pointer-events-none"
                         style={{
-                          left: "100%",
-                          width: `${gapPx}px`,
+                          left: connectLeft ? `${-gapPx}px` : 0,
+                          right: connectRight ? `${-gapPx}px` : 0,
+                          top: connectDown ? `${-gapPx}px` : 0,
+                          bottom: connectUp ? `${-gapPx}px` : 0,
                           background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectLeft ? (
-                      <span
-                        className="absolute top-0 bottom-0 pointer-events-none"
-                        style={{
-                          right: "100%",
-                          width: `${gapPx}px`,
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectUp ? (
-                      <span
-                        className="absolute left-0 right-0 pointer-events-none"
-                        style={{
-                          top: "100%",
-                          height: `${gapPx}px`,
-                          background: snakeCell?.color,
-                        }}
-                      />
-                    ) : null}
-                    {connectDown ? (
-                      <span
-                        className="absolute left-0 right-0 pointer-events-none"
-                        style={{
-                          bottom: "100%",
-                          height: `${gapPx}px`,
-                          background: snakeCell?.color,
+                          borderRadius: "2px",
                         }}
                       />
                     ) : null}
