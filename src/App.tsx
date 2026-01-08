@@ -1325,16 +1325,14 @@ function BoardView({
             const isFood = positionMap.foodSet.has(key);
             const baseStyles =
               "aspect-square w-full rounded-sm border p-0 leading-none relative";
-            const borderColor = snakeCell?.isYou
-              ? "border-slate-900"
+            const borderColor = snakeCell
+              ? "border-transparent"
               : "border-slate-200";
-            const background = snakeCell
-              ? snakeCell.color
-              : isHazard
-                ? "rgba(220, 38, 38, 0.85)"
-                : isFood
-                  ? "rgba(101, 163, 13, 0.75)"
-                  : "rgba(255, 255, 255, 0.8)";
+            const background = isHazard
+              ? "rgba(220, 38, 38, 0.85)"
+              : isFood
+                ? "rgba(101, 163, 13, 0.75)"
+                : "rgba(255, 255, 255, 0.8)";
             const moveClass =
               moveTargetKey === key ? "ring-2 ring-slate-700/60" : "";
             const hasSnake = Boolean(snakeCell);
@@ -1356,14 +1354,21 @@ function BoardView({
               >
                 {hasSnake ? (
                   <>
+                    <span
+                      className="absolute pointer-events-none rounded-sm"
+                      style={{
+                        inset: "2px",
+                        background: snakeCell?.color,
+                      }}
+                    />
                     {connectRight || connectLeft || connectUp || connectDown ? (
                       <span
                         className="absolute pointer-events-none"
                         style={{
-                          left: connectLeft ? `${-gapPx}px` : 0,
-                          right: connectRight ? `${-gapPx}px` : 0,
-                          top: connectUp ? `${-gapPx}px` : 0,
-                          bottom: connectDown ? `${-gapPx}px` : 0,
+                          left: connectLeft ? `${-gapPx}px` : "2px",
+                          right: connectRight ? `${-gapPx}px` : "2px",
+                          top: connectUp ? `${-gapPx}px` : "2px",
+                          bottom: connectDown ? `${-gapPx}px` : "2px",
                           background: snakeCell?.color,
                           borderRadius: "2px",
                         }}
