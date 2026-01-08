@@ -1364,8 +1364,8 @@ function BoardView({
                         className="absolute pointer-events-none"
                         style={{
                           right: "-4px",
-                          top: "35%",
-                          bottom: "35%",
+                          top: "3px",
+                          bottom: "3px",
                           width: "4px",
                           background: snakeCell?.color,
                         }}
@@ -1376,8 +1376,8 @@ function BoardView({
                         className="absolute pointer-events-none"
                         style={{
                           left: "-4px",
-                          top: "35%",
-                          bottom: "35%",
+                          top: "3px",
+                          bottom: "3px",
                           width: "4px",
                           background: snakeCell?.color,
                         }}
@@ -1388,8 +1388,8 @@ function BoardView({
                         className="absolute pointer-events-none"
                         style={{
                           top: "-4px",
-                          left: "35%",
-                          right: "35%",
+                          left: "3px",
+                          right: "3px",
                           height: "4px",
                           background: snakeCell?.color,
                         }}
@@ -1400,8 +1400,8 @@ function BoardView({
                         className="absolute pointer-events-none"
                         style={{
                           bottom: "-4px",
-                          left: "35%",
-                          right: "35%",
+                          left: "3px",
+                          right: "3px",
                           height: "4px",
                           background: snakeCell?.color,
                         }}
