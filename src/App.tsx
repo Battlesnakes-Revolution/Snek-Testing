@@ -894,62 +894,73 @@ function EditorControls({
                   </button>
                 ) : null}
               </div>
-              <input
-                value={snakeItem.name}
-                onChange={(event) =>
-                  updateSnake(snakeItem.id, (current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-              />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Name</label>
                 <input
-                  value={snakeItem.id}
-                  onChange={(event) =>
-                    setEditorState((prev) => {
-                      const nextId = event.target.value;
-                      if (activeSnakeId === snakeItem.id) {
-                        setActiveSnakeId(nextId);
-                      }
-                      return {
-                        ...prev,
-                        snakes: prev.snakes.map((item) =>
-                          item.id === snakeItem.id
-                            ? { ...item, id: nextId }
-                            : item,
-                        ),
-                        youId:
-                          prev.youId === snakeItem.id ? nextId : prev.youId,
-                      };
-                    })
-                  }
-                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-                />
-                <input
-                  value={snakeItem.squad}
+                  value={snakeItem.name}
                   onChange={(event) =>
                     updateSnake(snakeItem.id, (current) => ({
                       ...current,
-                      squad: event.target.value,
+                      name: event.target.value,
                     }))
                   }
-                  placeholder="squad"
                   className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
                 />
               </div>
-              <input
-                type="number"
-                value={snakeItem.health}
-                onChange={(event) =>
-                  updateSnake(snakeItem.id, (current) => ({
-                    ...current,
-                    health: Number(event.target.value),
-                  }))
-                }
-                className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">ID</label>
+                  <input
+                    value={snakeItem.id}
+                    onChange={(event) =>
+                      setEditorState((prev) => {
+                        const nextId = event.target.value;
+                        if (activeSnakeId === snakeItem.id) {
+                          setActiveSnakeId(nextId);
+                        }
+                        return {
+                          ...prev,
+                          snakes: prev.snakes.map((item) =>
+                            item.id === snakeItem.id
+                              ? { ...item, id: nextId }
+                              : item,
+                          ),
+                          youId:
+                            prev.youId === snakeItem.id ? nextId : prev.youId,
+                        };
+                      })
+                    }
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Squad</label>
+                  <input
+                    value={snakeItem.squad}
+                    onChange={(event) =>
+                      updateSnake(snakeItem.id, (current) => ({
+                        ...current,
+                        squad: event.target.value,
+                      }))
+                    }
+                    className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Health</label>
+                <input
+                  type="number"
+                  value={snakeItem.health}
+                  onChange={(event) =>
+                    updateSnake(snakeItem.id, (current) => ({
+                      ...current,
+                      health: Number(event.target.value),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                />
+              </div>
               <button
                 onClick={() =>
                   updateSnake(snakeItem.id, (current) => ({
