@@ -196,21 +196,49 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
     return null;
   };
 
-  const getConnectionStyle = (x: number, y: number, prevSegment: Coordinate | null, nextSegment: Coordinate | null, color: string) => {
-    const connections: React.CSSProperties = {};
-    if (prevSegment) {
-      if (prevSegment.x < x) connections.borderLeft = `3px solid ${color}`;
-      if (prevSegment.x > x) connections.borderRight = `3px solid ${color}`;
-      if (prevSegment.y < y) connections.borderBottom = `3px solid ${color}`;
-      if (prevSegment.y > y) connections.borderTop = `3px solid ${color}`;
-    }
-    if (nextSegment) {
-      if (nextSegment.x < x) connections.borderLeft = `3px solid ${color}`;
-      if (nextSegment.x > x) connections.borderRight = `3px solid ${color}`;
-      if (nextSegment.y < y) connections.borderBottom = `3px solid ${color}`;
-      if (nextSegment.y > y) connections.borderTop = `3px solid ${color}`;
-    }
-    return connections;
+  const getConnectors = (x: number, y: number, prevSegment: Coordinate | null, nextSegment: Coordinate | null, color: string) => {
+    const connectors: Array<{ direction: "left" | "right" | "up" | "down" }> = [];
+    const checkConnection = (seg: Coordinate | null) => {
+      if (!seg) return;
+      if (seg.x < x) connectors.push({ direction: "left" });
+      if (seg.x > x) connectors.push({ direction: "right" });
+      if (seg.y > y) connectors.push({ direction: "up" });
+      if (seg.y < y) connectors.push({ direction: "down" });
+    };
+    checkConnection(prevSegment);
+    checkConnection(nextSegment);
+    return connectors.map((c, i) => {
+      const style: React.CSSProperties = {
+        position: "absolute",
+        backgroundColor: color,
+      };
+      if (c.direction === "left") {
+        style.left = "-5px";
+        style.top = "50%";
+        style.transform = "translateY(-50%)";
+        style.width = "6px";
+        style.height = "12px";
+      } else if (c.direction === "right") {
+        style.right = "-5px";
+        style.top = "50%";
+        style.transform = "translateY(-50%)";
+        style.width = "6px";
+        style.height = "12px";
+      } else if (c.direction === "up") {
+        style.top = "-5px";
+        style.left = "50%";
+        style.transform = "translateX(-50%)";
+        style.width = "12px";
+        style.height = "6px";
+      } else if (c.direction === "down") {
+        style.bottom = "-5px";
+        style.left = "50%";
+        style.transform = "translateX(-50%)";
+        style.width = "12px";
+        style.height = "6px";
+      }
+      return <div key={i} style={style} />;
+    });
   };
 
   return (
@@ -404,14 +432,14 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                 const x = col;
                 const content = getCellContent(x, y);
                 const isSnake = content?.type === "head" || content?.type === "body";
-                const connectionStyle = isSnake && content.prevSegment !== undefined
-                  ? getConnectionStyle(x, y, content.prevSegment, content.nextSegment ?? null, content.color ?? "#43b047")
-                  : {};
+                const connectors = isSnake && content.prevSegment !== undefined
+                  ? getConnectors(x, y, content.prevSegment, content.nextSegment ?? null, content.color ?? "#43b047")
+                  : [];
                 return (
                   <button
                     key={`${x}-${y}`}
                     onClick={() => handleCellClick(x, y)}
-                    className="w-7 h-7 rounded border border-sand/20 relative flex items-center justify-center text-[10px] font-bold"
+                    className="w-7 h-7 rounded border border-sand/20 relative flex items-center justify-center text-[10px] font-bold overflow-visible"
                     style={{
                       backgroundColor: content
                         ? content.type === "food"
@@ -420,14 +448,14 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                           ? "#6b21a8"
                           : content.color
                         : "#1a1a2e",
-                      ...connectionStyle,
                     }}
                   >
+                    {connectors}
                     {content?.type === "head" && (
-                      <span className="text-white">{content.isYou ? "👍" : "🐍"}</span>
+                      <span className="text-white z-10">{content.isYou ? "👍" : "🐍"}</span>
                     )}
                     {content?.type === "body" && content.health !== undefined && content.nextSegment === null && (
-                      <span className="text-white text-[9px]">{content.health}</span>
+                      <span className="text-white text-[9px] z-10">{content.health}</span>
                     )}
                   </button>
                 );
