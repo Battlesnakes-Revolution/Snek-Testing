@@ -73,7 +73,7 @@ export default defineSchema({
     expectedSafeMoves: v.array(v.string()),
     createdAt: v.number(),
     ownerId: v.optional(v.id("users")),
-    status: v.optional(v.union(v.literal("approved"), v.literal("pending"), v.literal("rejected"))),
+    status: v.optional(v.union(v.literal("approved"), v.literal("pending"), v.literal("rejected"), v.literal("private"))),
     approvedBy: v.optional(v.id("users")),
     approvedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),

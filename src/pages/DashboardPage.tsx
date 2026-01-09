@@ -49,7 +49,7 @@ type Test = {
   turn: number;
   youId: string;
   expectedSafeMoves: string[];
-  status?: "pending" | "approved" | "rejected";
+  status?: "pending" | "approved" | "rejected" | "private";
   rejectionReason?: string;
 };
 

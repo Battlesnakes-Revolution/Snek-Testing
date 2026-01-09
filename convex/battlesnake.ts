@@ -569,6 +569,45 @@ export const rejectTest = mutation({
   },
 });
 
+export const makeTestPrivate = mutation({
+  args: { token: v.string(), id: v.id("tests") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    await ctx.db.patch(args.id, {
+      status: "private",
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const listRejectedTests = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    return await ctx.db
+      .query("tests")
+      .withIndex("by_status", (q) => q.eq("status", "rejected"))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const listPrivateTests = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    return await ctx.db
+      .query("tests")
+      .withIndex("by_status", (q) => q.eq("status", "private"))
+      .order("desc")
+      .collect();
+  },
+});
+
 function generateSlug(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let slug = "";
