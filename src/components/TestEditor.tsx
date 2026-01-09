@@ -502,8 +502,10 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                     className="w-7 h-7 rounded border border-sand/20 relative flex items-center justify-center text-[10px] font-bold overflow-visible"
                     style={{
                       backgroundColor: content
-                        ? content.type === "food" || content.type === "hazard"
-                          ? "#1a1a2e"
+                        ? content.type === "food"
+                          ? "#22c55e"
+                          : content.type === "hazard"
+                          ? "#dc2626"
                           : content.color
                         : "#1a1a2e",
                     }}

@@ -151,8 +151,10 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                 width: `${cellSize}px`,
                 height: `${cellSize}px`,
                 backgroundColor: content
-                  ? content.type === "food" || content.type === "hazard"
-                    ? "#1a1a2e"
+                  ? content.type === "food"
+                    ? "#22c55e"
+                    : content.type === "hazard"
+                    ? "#dc2626"
                     : content.color
                   : "#1a1a2e",
               }}
