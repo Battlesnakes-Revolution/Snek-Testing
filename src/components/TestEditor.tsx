@@ -12,6 +12,7 @@ type Snake = {
   latency?: string;
   shout?: string;
   squad?: string;
+  headEmoji?: string;
 };
 type Board = {
   height: number;
@@ -53,6 +54,7 @@ type Props = {
 };
 
 const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
+const SNAKE_EMOJIS = ["🐍", "😎", "🔥", "💀", "🎯", "⚡", "🌟", "🦎", "🐉", "👑", "💎", "🎮"];
 
 function makeDefaultSnake(id: string, name: string, x: number): Snake {
   return {
@@ -169,6 +171,15 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
     });
   };
 
+  const getSnakeColor = (snakeIndex: number) => {
+    const snake = snakes[snakeIndex];
+    if (snake.squad) {
+      const firstSnakeWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
+      return SNAKE_COLORS[firstSnakeWithSameSquad % SNAKE_COLORS.length];
+    }
+    return SNAKE_COLORS[snakeIndex % SNAKE_COLORS.length];
+  };
+
   const getCellContent = (x: number, y: number) => {
     for (let i = 0; i < snakes.length; i++) {
       const snake = snakes[i];
@@ -179,11 +190,12 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
         const nextSegment = bodyIndex < snake.body.length - 1 ? snake.body[bodyIndex + 1] : null;
         return {
           type: isHead ? "head" : "body",
-          color: SNAKE_COLORS[i % SNAKE_COLORS.length],
+          color: getSnakeColor(i),
           isYou: snake.id === youId,
           prevSegment,
           nextSegment,
           health: snake.health,
+          headEmoji: snake.headEmoji,
         };
       }
     }
@@ -309,7 +321,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                   <div className="flex items-center gap-2 mb-2">
                     <div
                       className="w-4 h-4 rounded"
-                      style={{ backgroundColor: SNAKE_COLORS[i % SNAKE_COLORS.length] }}
+                      style={{ backgroundColor: getSnakeColor(i) }}
                     />
                     <input
                       type="text"
@@ -343,7 +355,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <label className="text-sand/60 text-xs">Health:</label>
                     <input
                       type="number"
@@ -367,6 +379,24 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                       placeholder="Optional"
                       className="w-20 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
                     />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-sand/60 text-xs">Head Emoji:</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {SNAKE_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => {
+                            const newSnakes = [...snakes];
+                            newSnakes[i] = { ...snake, headEmoji: emoji };
+                            setSnakes(newSnakes);
+                          }}
+                          className={`w-6 h-6 rounded text-sm flex items-center justify-center ${snake.headEmoji === emoji ? "bg-lagoon" : "bg-sand/10 hover:bg-sand/20"}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -448,7 +478,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                   >
                     {connectors}
                     {content?.type === "head" && (
-                      <span className="text-white z-10">{content.isYou ? "👍" : "🐍"}</span>
+                      <span className="text-white z-10">{content.headEmoji || (content.isYou ? "👍" : "🐍")}</span>
                     )}
                     {content?.type === "body" && content.health !== undefined && content.nextSegment === null && (
                       <span className="text-white text-[9px] z-10">{content.health}</span>
