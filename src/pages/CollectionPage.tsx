@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import BoardPreview from "../components/BoardPreview";
 
 type Coordinate = { x: number; y: number };
 type Snake = {
@@ -35,8 +36,6 @@ type RunResult = {
   move?: string | null;
   error?: string;
 };
-
-const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
 
 export default function CollectionPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -102,27 +101,6 @@ export default function CollectionPage() {
         setRunningIds((prev) => ({ ...prev, [test._id]: false }));
       }
     }
-  };
-
-  const getCellContent = (board: Board, x: number, y: number, youId: string) => {
-    for (let i = 0; i < board.snakes.length; i++) {
-      const snake = board.snakes[i];
-      if (snake.head.x === x && snake.head.y === y) {
-        const isYou = snake.id === youId;
-        const label = isYou ? "Y" : String(i + 1);
-        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou, label };
-      }
-      if (snake.body.some((b, idx) => idx > 0 && b.x === x && b.y === y)) {
-        return { type: "body", color: SNAKE_COLORS[i % SNAKE_COLORS.length] };
-      }
-    }
-    if (board.food.some((f) => f.x === x && f.y === y)) {
-      return { type: "food" };
-    }
-    if (board.hazards.some((h) => h.x === x && h.y === y)) {
-      return { type: "hazard" };
-    }
-    return null;
   };
 
   const passCount = tests.filter((t) => {
@@ -201,39 +179,7 @@ export default function CollectionPage() {
 
                   {expandedTest === test._id && (
                     <div className="my-4">
-                      <div
-                        className="inline-grid gap-0.5 bg-night p-2 rounded"
-                        style={{ gridTemplateColumns: `repeat(${test.board.width}, 1fr)` }}
-                      >
-                        {Array.from({ length: test.board.height }).map((_, row) =>
-                          Array.from({ length: test.board.width }).map((_, col) => {
-                            const y = test.board.height - 1 - row;
-                            const x = col;
-                            const content = getCellContent(test.board, x, y, test.youId);
-                            return (
-                              <div
-                                key={`${x}-${y}`}
-                                className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
-                                style={{
-                                  backgroundColor: content
-                                    ? content.type === "food"
-                                      ? "#22c55e"
-                                      : content.type === "hazard"
-                                      ? "#dc2626"
-                                      : content.color
-                                    : "#1a1a2e",
-                                }}
-                              >
-                                {content?.type === "head" && (
-                                  <span className="text-[8px] font-bold text-white drop-shadow-sm">
-                                    {content.label}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
+                      <BoardPreview board={test.board} youId={test.youId} cellSize={20} />
                     </div>
                   )}
 

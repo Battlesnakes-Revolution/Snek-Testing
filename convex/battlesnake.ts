@@ -513,6 +513,44 @@ export const updateUserTest = mutation({
   },
 });
 
+export const adminUpdateTest = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("tests"),
+    name: v.string(),
+    board,
+    game,
+    turn: v.number(),
+    youId: v.string(),
+    expectedSafeMoves: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { isAdmin } = await requireUserSession(ctx, args.token);
+    if (!isAdmin) {
+      throw new Error("Admin access required.");
+    }
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    const youExists = args.board.snakes.some((snakeItem) => {
+      return snakeItem.id === args.youId;
+    });
+    if (!youExists) {
+      throw new Error("youId must match a snake in the board.");
+    }
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      board: args.board,
+      game: args.game,
+      turn: args.turn,
+      youId: args.youId,
+      expectedSafeMoves: args.expectedSafeMoves,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const deleteUserTest = mutation({
   args: { token: v.string(), id: v.id("tests") },
   handler: async (ctx, args) => {

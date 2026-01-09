@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import BoardPreview from "../components/BoardPreview";
+import TestEditor from "../components/TestEditor";
 
 type Test = {
   _id: Id<"tests">;
@@ -23,6 +25,10 @@ type Snake = {
   body: Coordinate[];
   head: Coordinate;
   length: number;
+  squad?: string;
+  headEmoji?: string;
+  latency?: string;
+  shout?: string;
 };
 type Board = {
   height: number;
@@ -32,13 +38,28 @@ type Board = {
   snakes: Snake[];
 };
 
-const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
+type Game = {
+  id?: string;
+  ruleset?: {
+    name?: string;
+    version?: string;
+    settings?: {
+      foodSpawnChance?: number;
+      minimumFood?: number;
+      hazardDamagePerTurn?: number;
+      hazardMap?: string;
+    };
+  };
+  map?: string;
+  timeout?: number;
+};
 
 export default function AdminPage() {
   const { user, token, logout } = useAuth();
   const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
   const [expandedTest, setExpandedTest] = useState<Id<"tests"> | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "public" | "rejected" | "private">("pending");
+  const [editingTest, setEditingTest] = useState<Test | null>(null);
 
   const pendingTests = useQuery(api.battlesnake.listPendingTests, token ? { token } : "skip");
   const publicTests = useQuery(api.battlesnake.listPublicTests);
@@ -47,11 +68,34 @@ export default function AdminPage() {
   const approveTest = useMutation(api.battlesnake.approveTest);
   const rejectTest = useMutation(api.battlesnake.rejectTest);
   const makeTestPrivate = useMutation(api.battlesnake.makeTestPrivate);
+  const adminUpdateTest = useMutation(api.battlesnake.adminUpdateTest);
 
   const handleMakePrivate = async (id: Id<"tests">) => {
     if (!token) return;
     if (confirm("Are you sure you want to make this test private? It will be removed from the public list.")) {
       await makeTestPrivate({ token, id });
+    }
+  };
+
+  const handleSaveTest = async (data: {
+    name: string;
+    board: Board;
+    game?: Game;
+    turn: number;
+    youId: string;
+    expectedSafeMoves: string[];
+  }) => {
+    if (!token || !editingTest) return;
+    try {
+      await adminUpdateTest({
+        token,
+        id: editingTest._id,
+        ...data,
+      });
+      setEditingTest(null);
+    } catch (error) {
+      console.error("Error saving test:", error);
+      alert(`Error saving test: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -84,26 +128,20 @@ export default function AdminPage() {
     });
   };
 
-  const getCellContent = (board: Board, x: number, y: number, youId: string) => {
-    for (let i = 0; i < board.snakes.length; i++) {
-      const snake = board.snakes[i];
-      if (snake.head.x === x && snake.head.y === y) {
-        const isYou = snake.id === youId;
-        const label = isYou ? "Y" : String(i + 1);
-        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou, label };
-      }
-      if (snake.body.some((b, idx) => idx > 0 && b.x === x && b.y === y)) {
-        return { type: "body", color: SNAKE_COLORS[i % SNAKE_COLORS.length] };
-      }
-    }
-    if (board.food.some((f) => f.x === x && f.y === y)) {
-      return { type: "food" };
-    }
-    if (board.hazards.some((h) => h.x === x && h.y === y)) {
-      return { type: "hazard" };
-    }
-    return null;
-  };
+  if (editingTest) {
+    return (
+      <div className="min-h-screen bg-night p-4">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-2xl font-bold text-sand mb-4">Edit Test: {editingTest.name}</h1>
+          <TestEditor
+            initialData={editingTest}
+            onSave={handleSaveTest}
+            onCancel={() => setEditingTest(null)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-night p-4">
@@ -171,6 +209,12 @@ export default function AdminPage() {
                           {expandedTest === test._id ? "Hide Board" : "Show Board"}
                         </button>
                         <button
+                          onClick={() => setEditingTest(test)}
+                          className="text-sm px-3 py-1 bg-lagoon text-ink rounded hover:bg-lagoon/80"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleApprove(test._id)}
                           className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
                         >
@@ -184,39 +228,7 @@ export default function AdminPage() {
 
                     {expandedTest === test._id && (
                       <div className="my-4">
-                        <div
-                          className="inline-grid gap-0.5 bg-night p-2 rounded"
-                          style={{ gridTemplateColumns: `repeat(${test.board.width}, 1fr)` }}
-                        >
-                          {Array.from({ length: test.board.height }).map((_, row) =>
-                            Array.from({ length: test.board.width }).map((_, col) => {
-                              const y = test.board.height - 1 - row;
-                              const x = col;
-                              const content = getCellContent(test.board, x, y, test.youId);
-                              return (
-                                <div
-                                  key={`${x}-${y}`}
-                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
-                                  style={{
-                                    backgroundColor: content
-                                      ? content.type === "food"
-                                        ? "#22c55e"
-                                        : content.type === "hazard"
-                                        ? "#dc2626"
-                                        : content.color
-                                      : "#1a1a2e",
-                                  }}
-                                >
-                                  {content?.type === "head" && (
-                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
-                                      {content.label}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
+                        <BoardPreview board={test.board} youId={test.youId} cellSize={20} />
                       </div>
                     )}
 
@@ -264,6 +276,12 @@ export default function AdminPage() {
                           {expandedTest === test._id ? "Hide Board" : "Show Board"}
                         </button>
                         <button
+                          onClick={() => setEditingTest(test)}
+                          className="text-sm px-3 py-1 bg-lagoon text-ink rounded hover:bg-lagoon/80"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleMakePrivate(test._id)}
                           className="text-sm px-3 py-1 bg-ember text-ink rounded hover:bg-ember/80"
                         >
@@ -277,39 +295,7 @@ export default function AdminPage() {
 
                     {expandedTest === test._id && (
                       <div className="my-4">
-                        <div
-                          className="inline-grid gap-0.5 bg-night p-2 rounded"
-                          style={{ gridTemplateColumns: `repeat(${test.board.width}, 1fr)` }}
-                        >
-                          {Array.from({ length: test.board.height }).map((_, row) =>
-                            Array.from({ length: test.board.width }).map((_, col) => {
-                              const y = test.board.height - 1 - row;
-                              const x = col;
-                              const content = getCellContent(test.board, x, y, test.youId);
-                              return (
-                                <div
-                                  key={`${x}-${y}`}
-                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
-                                  style={{
-                                    backgroundColor: content
-                                      ? content.type === "food"
-                                        ? "#22c55e"
-                                        : content.type === "hazard"
-                                        ? "#dc2626"
-                                        : content.color
-                                      : "#1a1a2e",
-                                  }}
-                                >
-                                  {content?.type === "head" && (
-                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
-                                      {content.label}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
+                        <BoardPreview board={test.board} youId={test.youId} cellSize={20} />
                       </div>
                     )}
                   </div>
@@ -341,6 +327,12 @@ export default function AdminPage() {
                           {expandedTest === test._id ? "Hide Board" : "Show Board"}
                         </button>
                         <button
+                          onClick={() => setEditingTest(test)}
+                          className="text-sm px-3 py-1 bg-lagoon text-ink rounded hover:bg-lagoon/80"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleApprove(test._id)}
                           className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
                         >
@@ -354,39 +346,7 @@ export default function AdminPage() {
 
                     {expandedTest === test._id && (
                       <div className="my-4">
-                        <div
-                          className="inline-grid gap-0.5 bg-night p-2 rounded"
-                          style={{ gridTemplateColumns: `repeat(${test.board.width}, 1fr)` }}
-                        >
-                          {Array.from({ length: test.board.height }).map((_, row) =>
-                            Array.from({ length: test.board.width }).map((_, col) => {
-                              const y = test.board.height - 1 - row;
-                              const x = col;
-                              const content = getCellContent(test.board, x, y, test.youId);
-                              return (
-                                <div
-                                  key={`${x}-${y}`}
-                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
-                                  style={{
-                                    backgroundColor: content
-                                      ? content.type === "food"
-                                        ? "#22c55e"
-                                        : content.type === "hazard"
-                                        ? "#dc2626"
-                                        : content.color
-                                      : "#1a1a2e",
-                                  }}
-                                >
-                                  {content?.type === "head" && (
-                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
-                                      {content.label}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
+                        <BoardPreview board={test.board} youId={test.youId} cellSize={20} />
                       </div>
                     )}
                   </div>
@@ -418,6 +378,12 @@ export default function AdminPage() {
                           {expandedTest === test._id ? "Hide Board" : "Show Board"}
                         </button>
                         <button
+                          onClick={() => setEditingTest(test)}
+                          className="text-sm px-3 py-1 bg-lagoon text-ink rounded hover:bg-lagoon/80"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleApprove(test._id)}
                           className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
                         >
@@ -431,39 +397,7 @@ export default function AdminPage() {
 
                     {expandedTest === test._id && (
                       <div className="my-4">
-                        <div
-                          className="inline-grid gap-0.5 bg-night p-2 rounded"
-                          style={{ gridTemplateColumns: `repeat(${test.board.width}, 1fr)` }}
-                        >
-                          {Array.from({ length: test.board.height }).map((_, row) =>
-                            Array.from({ length: test.board.width }).map((_, col) => {
-                              const y = test.board.height - 1 - row;
-                              const x = col;
-                              const content = getCellContent(test.board, x, y, test.youId);
-                              return (
-                                <div
-                                  key={`${x}-${y}`}
-                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
-                                  style={{
-                                    backgroundColor: content
-                                      ? content.type === "food"
-                                        ? "#22c55e"
-                                        : content.type === "hazard"
-                                        ? "#dc2626"
-                                        : content.color
-                                      : "#1a1a2e",
-                                  }}
-                                >
-                                  {content?.type === "head" && (
-                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
-                                      {content.label}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
+                        <BoardPreview board={test.board} youId={test.youId} cellSize={20} />
                       </div>
                     )}
                   </div>
