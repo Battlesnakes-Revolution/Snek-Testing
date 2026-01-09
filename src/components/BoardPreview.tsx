@@ -25,48 +25,7 @@ type Props = {
   cellSize?: number;
 };
 
-type ShadowCell = {
-  x: number;
-  y: number;
-  color: string;
-};
-
 const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
-
-function getMovementShadows(board: Board): ShadowCell[] {
-  const shadows: ShadowCell[] = [];
-  
-  for (let i = 0; i < board.snakes.length; i++) {
-    const snake = board.snakes[i];
-    if (snake.body.length < 2) continue;
-    
-    const head = snake.body[0];
-    const neck = snake.body[1];
-    const dx = head.x - neck.x;
-    const dy = head.y - neck.y;
-    
-    const shadowX = head.x + dx;
-    const shadowY = head.y + dy;
-    
-    if (shadowX < 0 || shadowX >= board.width || shadowY < 0 || shadowY >= board.height) {
-      continue;
-    }
-    
-    const isOccupied = board.snakes.some(s => 
-      s.body.some(b => b.x === shadowX && b.y === shadowY)
-    ) || board.food.some(f => f.x === shadowX && f.y === shadowY);
-    
-    if (!isOccupied) {
-      shadows.push({
-        x: shadowX,
-        y: shadowY,
-        color: getSnakeColor(board.snakes, i),
-      });
-    }
-  }
-  
-  return shadows;
-}
 
 function getSnakeColor(snakes: Snake[], snakeIndex: number): string {
   const snake = snakes[snakeIndex];
@@ -159,8 +118,6 @@ function getConnectors(
 }
 
 export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
-  const shadows = getMovementShadows(board);
-  
   return (
     <div
       className="inline-grid gap-0.5 bg-night p-2 rounded"
@@ -171,7 +128,6 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
           const y = board.height - 1 - row;
           const x = col;
           const content = getCellContent(board, x, y, youId);
-          const shadow = shadows.find(s => s.x === x && s.y === y);
           const isSnake = content?.type === "head" || content?.type === "body";
           const connectors =
             isSnake && content.prevSegment !== undefined
@@ -202,10 +158,7 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                     : content.type === "hazard"
                     ? "#dc2626"
                     : content.color
-                  : shadow
-                  ? shadow.color
                   : "#1a1a2e",
-                opacity: shadow && !content ? 0.3 : 1,
               }}
             >
               {connectors}
