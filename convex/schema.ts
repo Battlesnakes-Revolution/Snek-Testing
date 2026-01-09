@@ -12,6 +12,7 @@ const snake = v.object({
   latency: v.optional(v.string()),
   shout: v.optional(v.string()),
   squad: v.optional(v.string()),
+  headEmoji: v.optional(v.string()),
 });
 const board = v.object({
   height: v.number(),
