@@ -1367,48 +1367,48 @@ function BoardView({
                     />
                     {connectRight ? (
                       <span
-                        className="absolute pointer-events-none"
+                        className="absolute pointer-events-none z-0"
                         style={{
-                          right: "-1px",
+                          right: "-50%",
                           top: "4px",
                           bottom: "4px",
-                          width: "5px",
+                          width: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
                     ) : null}
                     {connectLeft ? (
                       <span
-                        className="absolute pointer-events-none"
+                        className="absolute pointer-events-none z-0"
                         style={{
-                          left: "-1px",
+                          left: "-50%",
                           top: "4px",
                           bottom: "4px",
-                          width: "5px",
+                          width: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
                     ) : null}
                     {connectUp ? (
                       <span
-                        className="absolute pointer-events-none"
+                        className="absolute pointer-events-none z-0"
                         style={{
-                          top: "-1px",
+                          top: "-50%",
                           left: "4px",
                           right: "4px",
-                          height: "5px",
+                          height: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
                     ) : null}
                     {connectDown ? (
                       <span
-                        className="absolute pointer-events-none"
+                        className="absolute pointer-events-none z-0"
                         style={{
-                          bottom: "-1px",
+                          bottom: "-50%",
                           left: "4px",
                           right: "4px",
-                          height: "5px",
+                          height: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
