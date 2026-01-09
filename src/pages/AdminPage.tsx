@@ -198,9 +198,9 @@ export default function AdminPage() {
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
-                                        ? "#e55b3c"
+                                        ? "#22c55e"
                                         : content.type === "hazard"
-                                        ? "#6b21a8"
+                                        ? "#dc2626"
                                         : content.color
                                       : "#1a1a2e",
                                   }}
@@ -291,9 +291,9 @@ export default function AdminPage() {
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
-                                        ? "#e55b3c"
+                                        ? "#22c55e"
                                         : content.type === "hazard"
-                                        ? "#6b21a8"
+                                        ? "#dc2626"
                                         : content.color
                                       : "#1a1a2e",
                                   }}
@@ -368,9 +368,9 @@ export default function AdminPage() {
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
-                                        ? "#e55b3c"
+                                        ? "#22c55e"
                                         : content.type === "hazard"
-                                        ? "#6b21a8"
+                                        ? "#dc2626"
                                         : content.color
                                       : "#1a1a2e",
                                   }}
@@ -445,9 +445,9 @@ export default function AdminPage() {
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
-                                        ? "#e55b3c"
+                                        ? "#22c55e"
                                         : content.type === "hazard"
-                                        ? "#6b21a8"
+                                        ? "#dc2626"
                                         : content.color
                                       : "#1a1a2e",
                                   }}
