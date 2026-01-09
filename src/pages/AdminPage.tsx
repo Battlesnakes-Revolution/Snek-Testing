@@ -44,12 +44,11 @@ export default function AdminPage() {
   const publicTests = useQuery(api.battlesnake.listPublicTests);
   const approveTest = useMutation(api.battlesnake.approveTest);
   const rejectTest = useMutation(api.battlesnake.rejectTest);
-  const deleteUserTest = useMutation(api.battlesnake.deleteUserTest);
 
-  const handleDeletePublicTest = async (id: Id<"tests">) => {
+  const handleMakePrivate = async (id: Id<"tests">) => {
     if (!token) return;
-    if (confirm("Are you sure you want to delete this public test?")) {
-      await deleteUserTest({ token, id });
+    if (confirm("Are you sure you want to make this test private? It will be removed from the public list.")) {
+      await rejectTest({ token, id, reason: "Made private by admin" });
     }
   };
 
@@ -248,10 +247,10 @@ export default function AdminPage() {
                           {expandedTest === test._id ? "Hide Board" : "Show Board"}
                         </button>
                         <button
-                          onClick={() => handleDeletePublicTest(test._id)}
+                          onClick={() => handleMakePrivate(test._id)}
                           className="text-sm px-3 py-1 bg-ember text-ink rounded hover:bg-ember/80"
                         >
-                          Delete
+                          Make Private
                         </button>
                       </div>
                     </div>
