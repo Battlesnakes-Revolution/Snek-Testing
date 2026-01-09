@@ -9,6 +9,7 @@ type Snake = {
   head: Coordinate;
   length: number;
   squad?: string;
+  headEmoji?: string;
 };
 type Board = {
   height: number;
@@ -50,6 +51,7 @@ function getCellContent(board: Board, x: number, y: number, youId: string) {
         color: getSnakeColor(board.snakes, i),
         isYou,
         label,
+        headEmoji: snake.headEmoji,
         prevSegment,
         nextSegment,
       };
@@ -169,9 +171,9 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
               {content?.type === "head" && (
                 <span
                   className="font-bold text-white drop-shadow-sm z-10"
-                  style={{ fontSize: `${Math.max(8, cellSize * 0.4)}px` }}
+                  style={{ fontSize: `${Math.max(8, cellSize * 0.5)}px` }}
                 >
-                  {content.label}
+                  {content.isYou ? "Y" : (content.headEmoji || content.label)}
                 </span>
               )}
             </div>
