@@ -23,6 +23,7 @@ type Props = {
   board: Board;
   youId: string;
   cellSize?: number;
+  trail?: Coordinate[];
 };
 
 const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
