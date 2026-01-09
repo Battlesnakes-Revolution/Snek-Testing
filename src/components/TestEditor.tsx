@@ -130,6 +130,16 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
     } else if (tool === "eraser") {
       setFood(food.filter((f) => !(f.x === x && f.y === y)));
       setHazards(hazards.filter((h) => !(h.x === x && h.y === y)));
+      const newSnakes = snakes.map((snake) => {
+        const inBody = snake.body.findIndex((b) => b.x === x && b.y === y);
+        if (inBody === -1) return snake;
+        if (inBody === 0) {
+          return { ...snake, body: [], head: { x: -1, y: -1 }, length: 0 };
+        }
+        const newBody = snake.body.filter((_, i) => i !== inBody);
+        return { ...snake, body: newBody, length: newBody.length };
+      });
+      setSnakes(newSnakes);
     }
   };
 
