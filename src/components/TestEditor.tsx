@@ -172,11 +172,19 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
   const getCellContent = (x: number, y: number) => {
     for (let i = 0; i < snakes.length; i++) {
       const snake = snakes[i];
-      if (snake.head.x === x && snake.head.y === y) {
-        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou: snake.id === youId };
-      }
-      if (snake.body.some((b, idx) => idx > 0 && b.x === x && b.y === y)) {
-        return { type: "body", color: SNAKE_COLORS[i % SNAKE_COLORS.length] };
+      const bodyIndex = snake.body.findIndex((b) => b.x === x && b.y === y);
+      if (bodyIndex !== -1) {
+        const isHead = bodyIndex === 0;
+        const prevSegment = bodyIndex > 0 ? snake.body[bodyIndex - 1] : null;
+        const nextSegment = bodyIndex < snake.body.length - 1 ? snake.body[bodyIndex + 1] : null;
+        return {
+          type: isHead ? "head" : "body",
+          color: SNAKE_COLORS[i % SNAKE_COLORS.length],
+          isYou: snake.id === youId,
+          prevSegment,
+          nextSegment,
+          health: snake.health,
+        };
       }
     }
     if (food.some((f) => f.x === x && f.y === y)) {
@@ -186,6 +194,23 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
       return { type: "hazard" };
     }
     return null;
+  };
+
+  const getConnectionStyle = (x: number, y: number, prevSegment: Coordinate | null, nextSegment: Coordinate | null, color: string) => {
+    const connections: React.CSSProperties = {};
+    if (prevSegment) {
+      if (prevSegment.x < x) connections.borderLeft = `3px solid ${color}`;
+      if (prevSegment.x > x) connections.borderRight = `3px solid ${color}`;
+      if (prevSegment.y < y) connections.borderBottom = `3px solid ${color}`;
+      if (prevSegment.y > y) connections.borderTop = `3px solid ${color}`;
+    }
+    if (nextSegment) {
+      if (nextSegment.x < x) connections.borderLeft = `3px solid ${color}`;
+      if (nextSegment.x > x) connections.borderRight = `3px solid ${color}`;
+      if (nextSegment.y < y) connections.borderBottom = `3px solid ${color}`;
+      if (nextSegment.y > y) connections.borderTop = `3px solid ${color}`;
+    }
+    return connections;
   };
 
   return (
@@ -254,43 +279,71 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
 
           <div className="mb-4">
             <label className="block text-sand/80 text-sm mb-1">Snakes</label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {snakes.map((snake, i) => (
-                <div key={snake.id} className="flex items-center gap-2">
-                  <div
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: SNAKE_COLORS[i % SNAKE_COLORS.length] }}
-                  />
-                  <input
-                    type="text"
-                    value={snake.name}
-                    onChange={(e) => {
-                      const newSnakes = [...snakes];
-                      newSnakes[i] = { ...snake, name: e.target.value };
-                      setSnakes(newSnakes);
-                    }}
-                    className="flex-1 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
-                  />
-                  <button
-                    onClick={() => setSelectedSnakeIndex(i)}
-                    className={`px-2 py-1 text-xs rounded ${selectedSnakeIndex === i ? "bg-lagoon text-ink" : "bg-sand/10 text-sand"}`}
-                  >
-                    Select
-                  </button>
-                  <button
-                    onClick={() => setYouId(snake.id)}
-                    className={`px-2 py-1 text-xs rounded ${youId === snake.id ? "bg-moss text-ink" : "bg-sand/10 text-sand"}`}
-                  >
-                    You
-                  </button>
-                  {snakes.length > 1 && (
+                <div key={snake.id} className="bg-night/50 p-2 rounded border border-sand/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: SNAKE_COLORS[i % SNAKE_COLORS.length] }}
+                    />
+                    <input
+                      type="text"
+                      value={snake.name}
+                      onChange={(e) => {
+                        const newSnakes = [...snakes];
+                        newSnakes[i] = { ...snake, name: e.target.value };
+                        setSnakes(newSnakes);
+                      }}
+                      placeholder="Name"
+                      className="flex-1 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
+                    />
                     <button
-                      onClick={() => removeSnake(i)}
-                      className="px-2 py-1 text-xs rounded bg-ember/20 text-ember"
+                      onClick={() => setSelectedSnakeIndex(i)}
+                      className={`px-2 py-1 text-xs rounded ${selectedSnakeIndex === i ? "bg-lagoon text-ink" : "bg-sand/10 text-sand"}`}
                     >
-                      X
+                      Select
                     </button>
-                  )}
+                    <button
+                      onClick={() => setYouId(snake.id)}
+                      className={`px-2 py-1 text-xs rounded ${youId === snake.id ? "bg-moss text-ink" : "bg-sand/10 text-sand"}`}
+                    >
+                      You
+                    </button>
+                    {snakes.length > 1 && (
+                      <button
+                        onClick={() => removeSnake(i)}
+                        className="px-2 py-1 text-xs rounded bg-ember/20 text-ember"
+                      >
+                        X
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sand/60 text-xs">Health:</label>
+                    <input
+                      type="number"
+                      value={snake.health}
+                      onChange={(e) => {
+                        const newSnakes = [...snakes];
+                        newSnakes[i] = { ...snake, health: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) };
+                        setSnakes(newSnakes);
+                      }}
+                      className="w-16 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
+                    />
+                    <label className="text-sand/60 text-xs ml-2">Squad:</label>
+                    <input
+                      type="text"
+                      value={snake.squad ?? ""}
+                      onChange={(e) => {
+                        const newSnakes = [...snakes];
+                        newSnakes[i] = { ...snake, squad: e.target.value || undefined };
+                        setSnakes(newSnakes);
+                      }}
+                      placeholder="Optional"
+                      className="w-20 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
+                    />
+                  </div>
                 </div>
               ))}
               <button
@@ -342,7 +395,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
         <div>
           <label className="block text-sand/80 text-sm mb-1">Board Preview</label>
           <div
-            className="inline-grid gap-0.5 bg-night p-2 rounded"
+            className="inline-grid gap-1 bg-night p-2 rounded"
             style={{ gridTemplateColumns: `repeat(${boardWidth}, 1fr)` }}
           >
             {Array.from({ length: boardHeight }).map((_, row) =>
@@ -350,11 +403,15 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                 const y = boardHeight - 1 - row;
                 const x = col;
                 const content = getCellContent(x, y);
+                const isSnake = content?.type === "head" || content?.type === "body";
+                const connectionStyle = isSnake && content.prevSegment !== undefined
+                  ? getConnectionStyle(x, y, content.prevSegment, content.nextSegment ?? null, content.color ?? "#43b047")
+                  : {};
                 return (
                   <button
                     key={`${x}-${y}`}
                     onClick={() => handleCellClick(x, y)}
-                    className="w-6 h-6 rounded-sm border border-sand/10"
+                    className="w-7 h-7 rounded border border-sand/20 relative flex items-center justify-center text-[10px] font-bold"
                     style={{
                       backgroundColor: content
                         ? content.type === "food"
@@ -363,10 +420,14 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                           ? "#6b21a8"
                           : content.color
                         : "#1a1a2e",
+                      ...connectionStyle,
                     }}
                   >
                     {content?.type === "head" && (
-                      <span className="text-[8px] text-white">{content.isYou ? "Y" : ""}</span>
+                      <span className="text-white">{content.isYou ? "👍" : "🐍"}</span>
+                    )}
+                    {content?.type === "body" && content.health !== undefined && content.nextSegment === null && (
+                      <span className="text-white text-[9px]">{content.health}</span>
                     )}
                   </button>
                 );
