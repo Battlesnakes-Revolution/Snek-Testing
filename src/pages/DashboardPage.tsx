@@ -108,20 +108,25 @@ export default function DashboardPage() {
     youId: string;
     expectedSafeMoves: string[];
   }) => {
-    if (editingTest) {
-      await updateTest({
-        token,
-        id: editingTest._id,
-        ...data,
-      });
-    } else {
-      await createTest({
-        token,
-        ...data,
-      });
+    try {
+      if (editingTest) {
+        await updateTest({
+          token,
+          id: editingTest._id,
+          ...data,
+        });
+      } else {
+        await createTest({
+          token,
+          ...data,
+        });
+      }
+      setShowEditor(false);
+      setEditingTest(null);
+    } catch (error) {
+      console.error("Error saving test:", error);
+      alert(`Error saving test: ${error instanceof Error ? error.message : String(error)}`);
     }
-    setShowEditor(false);
-    setEditingTest(null);
   };
 
   const handleDeleteTest = async (id: Id<"tests">) => {
