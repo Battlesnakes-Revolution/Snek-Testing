@@ -44,6 +44,26 @@ const game = v.optional(
 );
 
 export default defineSchema({
+  users: defineTable({
+    email: v.string(),
+    emailLower: v.string(),
+    passwordHash: v.string(),
+    username: v.string(),
+    isAdmin: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_emailLower", ["emailLower"])
+    .index("by_username", ["username"]),
+
+  userSessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_userId", ["userId"]),
+
   tests: defineTable({
     name: v.string(),
     board,
@@ -52,12 +72,42 @@ export default defineSchema({
     youId: v.string(),
     expectedSafeMoves: v.array(v.string()),
     createdAt: v.number(),
-  }).index("by_createdAt", ["createdAt"]),
+    ownerId: v.optional(v.id("users")),
+    status: v.optional(v.union(v.literal("approved"), v.literal("pending"), v.literal("rejected"))),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_ownerId", ["ownerId"])
+    .index("by_status", ["status"]),
+
+  collections: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    ownerId: v.id("users"),
+    isPublic: v.boolean(),
+    shareSlug: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerId", ["ownerId"])
+    .index("by_shareSlug", ["shareSlug"]),
+
+  collectionTests: defineTable({
+    collectionId: v.id("collections"),
+    testId: v.id("tests"),
+    addedAt: v.number(),
+  })
+    .index("by_collectionId", ["collectionId"])
+    .index("by_testId", ["testId"]),
+
   adminSessions: defineTable({
     token: v.string(),
     createdAt: v.number(),
     expiresAt: v.number(),
   }).index("by_token", ["token"]),
+
   adminRateLimits: defineTable({
     clientId: v.string(),
     windowStart: v.number(),

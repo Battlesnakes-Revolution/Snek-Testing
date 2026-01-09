@@ -1,0 +1,381 @@
+import { useState } from "react";
+import type { Id } from "../../convex/_generated/dataModel";
+
+type Coordinate = { x: number; y: number };
+type Snake = {
+  id: string;
+  name: string;
+  health: number;
+  body: Coordinate[];
+  head: Coordinate;
+  length: number;
+  latency?: string;
+  shout?: string;
+  squad?: string;
+};
+type Board = {
+  height: number;
+  width: number;
+  food: Coordinate[];
+  hazards: Coordinate[];
+  snakes: Snake[];
+};
+type Game = {
+  id?: string;
+  ruleset?: {
+    name?: string;
+    version?: string;
+    settings?: {
+      foodSpawnChance?: number;
+      minimumFood?: number;
+      hazardDamagePerTurn?: number;
+      hazardMap?: string;
+    };
+  };
+  map?: string;
+  timeout?: number;
+};
+
+type TestData = {
+  _id?: Id<"tests">;
+  name: string;
+  board: Board;
+  game?: Game;
+  turn: number;
+  youId: string;
+  expectedSafeMoves: string[];
+};
+
+type Props = {
+  initialData?: TestData | null;
+  onSave: (data: Omit<TestData, "_id">) => void;
+  onCancel: () => void;
+};
+
+const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
+
+function makeDefaultSnake(id: string, name: string, x: number): Snake {
+  return {
+    id,
+    name,
+    health: 100,
+    body: [
+      { x, y: 5 },
+      { x, y: 4 },
+      { x, y: 3 },
+    ],
+    head: { x, y: 5 },
+    length: 3,
+  };
+}
+
+export default function TestEditor({ initialData, onSave, onCancel }: Props) {
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [turn, setTurn] = useState(initialData?.turn ?? 0);
+  const [boardWidth, setBoardWidth] = useState(initialData?.board?.width ?? 11);
+  const [boardHeight, setBoardHeight] = useState(initialData?.board?.height ?? 11);
+  const [food, setFood] = useState<Coordinate[]>(initialData?.board?.food ?? []);
+  const [hazards, setHazards] = useState<Coordinate[]>(initialData?.board?.hazards ?? []);
+  const [snakes, setSnakes] = useState<Snake[]>(
+    initialData?.board?.snakes ?? [makeDefaultSnake("snake-1", "You", 5)]
+  );
+  const [youId, setYouId] = useState(initialData?.youId ?? "snake-1");
+  const [expectedSafeMoves, setExpectedSafeMoves] = useState<string[]>(
+    initialData?.expectedSafeMoves ?? []
+  );
+  const [tool, setTool] = useState<"food" | "hazard" | "snake-head" | "snake-body" | "eraser">("food");
+  const [selectedSnakeIndex, setSelectedSnakeIndex] = useState(0);
+
+  const handleCellClick = (x: number, y: number) => {
+    if (tool === "food") {
+      const exists = food.some((f) => f.x === x && f.y === y);
+      if (exists) {
+        setFood(food.filter((f) => !(f.x === x && f.y === y)));
+      } else {
+        setFood([...food, { x, y }]);
+      }
+    } else if (tool === "hazard") {
+      const exists = hazards.some((h) => h.x === x && h.y === y);
+      if (exists) {
+        setHazards(hazards.filter((h) => !(h.x === x && h.y === y)));
+      } else {
+        setHazards([...hazards, { x, y }]);
+      }
+    } else if (tool === "snake-head" && snakes[selectedSnakeIndex]) {
+      const newSnakes = [...snakes];
+      const snake = { ...newSnakes[selectedSnakeIndex] };
+      snake.head = { x, y };
+      snake.body = [{ x, y }, ...snake.body.slice(1)];
+      newSnakes[selectedSnakeIndex] = snake;
+      setSnakes(newSnakes);
+    } else if (tool === "snake-body" && snakes[selectedSnakeIndex]) {
+      const newSnakes = [...snakes];
+      const snake = { ...newSnakes[selectedSnakeIndex] };
+      const inBody = snake.body.findIndex((b) => b.x === x && b.y === y);
+      if (inBody > 0) {
+        snake.body = snake.body.filter((_, i) => i !== inBody);
+      } else if (inBody === -1) {
+        snake.body = [...snake.body, { x, y }];
+      }
+      snake.length = snake.body.length;
+      newSnakes[selectedSnakeIndex] = snake;
+      setSnakes(newSnakes);
+    } else if (tool === "eraser") {
+      setFood(food.filter((f) => !(f.x === x && f.y === y)));
+      setHazards(hazards.filter((h) => !(h.x === x && h.y === y)));
+    }
+  };
+
+  const addSnake = () => {
+    const id = `snake-${snakes.length + 1}`;
+    const newX = (snakes.length * 2 + 3) % boardWidth;
+    setSnakes([...snakes, makeDefaultSnake(id, `Snake ${snakes.length + 1}`, newX)]);
+  };
+
+  const removeSnake = (index: number) => {
+    if (snakes.length <= 1) return;
+    const removed = snakes[index];
+    const newSnakes = snakes.filter((_, i) => i !== index);
+    setSnakes(newSnakes);
+    if (youId === removed.id) {
+      setYouId(newSnakes[0].id);
+    }
+    if (selectedSnakeIndex >= newSnakes.length) {
+      setSelectedSnakeIndex(newSnakes.length - 1);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      alert("Please enter a test name");
+      return;
+    }
+    if (expectedSafeMoves.length === 0) {
+      alert("Please select at least one expected safe move");
+      return;
+    }
+    onSave({
+      name,
+      board: {
+        width: boardWidth,
+        height: boardHeight,
+        food,
+        hazards,
+        snakes,
+      },
+      turn,
+      youId,
+      expectedSafeMoves,
+    });
+  };
+
+  const getCellContent = (x: number, y: number) => {
+    for (let i = 0; i < snakes.length; i++) {
+      const snake = snakes[i];
+      if (snake.head.x === x && snake.head.y === y) {
+        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou: snake.id === youId };
+      }
+      if (snake.body.some((b, idx) => idx > 0 && b.x === x && b.y === y)) {
+        return { type: "body", color: SNAKE_COLORS[i % SNAKE_COLORS.length] };
+      }
+    }
+    if (food.some((f) => f.x === x && f.y === y)) {
+      return { type: "food" };
+    }
+    if (hazards.some((h) => h.x === x && h.y === y)) {
+      return { type: "hazard" };
+    }
+    return null;
+  };
+
+  return (
+    <div className="bg-ink border border-sand/20 rounded-lg p-6">
+      <h2 className="text-xl font-bold text-sand mb-4">
+        {initialData?._id ? "Edit Test" : "Create Test"}
+      </h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <div className="mb-4">
+            <label className="block text-sand/80 text-sm mb-1">Test Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon"
+              placeholder="e.g., Avoid Wall Collision"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sand/80 text-sm mb-1">Turn</label>
+              <input
+                type="number"
+                value={turn}
+                onChange={(e) => setTurn(parseInt(e.target.value) || 0)}
+                className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon"
+              />
+            </div>
+            <div>
+              <label className="block text-sand/80 text-sm mb-1">Width</label>
+              <input
+                type="number"
+                value={boardWidth}
+                onChange={(e) => setBoardWidth(Math.max(7, Math.min(21, parseInt(e.target.value) || 11)))}
+                className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon"
+              />
+            </div>
+            <div>
+              <label className="block text-sand/80 text-sm mb-1">Height</label>
+              <input
+                type="number"
+                value={boardHeight}
+                onChange={(e) => setBoardHeight(Math.max(7, Math.min(21, parseInt(e.target.value) || 11)))}
+                className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon"
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sand/80 text-sm mb-1">Tool</label>
+            <div className="flex flex-wrap gap-2">
+              {(["food", "hazard", "snake-head", "snake-body", "eraser"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTool(t)}
+                  className={`px-3 py-1 rounded text-sm ${tool === t ? "bg-lagoon text-ink" : "bg-sand/10 text-sand"}`}
+                >
+                  {t === "food" ? "Food" : t === "hazard" ? "Hazard" : t === "snake-head" ? "Snake Head" : t === "snake-body" ? "Snake Body" : "Eraser"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sand/80 text-sm mb-1">Snakes</label>
+            <div className="space-y-2">
+              {snakes.map((snake, i) => (
+                <div key={snake.id} className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: SNAKE_COLORS[i % SNAKE_COLORS.length] }}
+                  />
+                  <input
+                    type="text"
+                    value={snake.name}
+                    onChange={(e) => {
+                      const newSnakes = [...snakes];
+                      newSnakes[i] = { ...snake, name: e.target.value };
+                      setSnakes(newSnakes);
+                    }}
+                    className="flex-1 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
+                  />
+                  <button
+                    onClick={() => setSelectedSnakeIndex(i)}
+                    className={`px-2 py-1 text-xs rounded ${selectedSnakeIndex === i ? "bg-lagoon text-ink" : "bg-sand/10 text-sand"}`}
+                  >
+                    Select
+                  </button>
+                  <button
+                    onClick={() => setYouId(snake.id)}
+                    className={`px-2 py-1 text-xs rounded ${youId === snake.id ? "bg-moss text-ink" : "bg-sand/10 text-sand"}`}
+                  >
+                    You
+                  </button>
+                  {snakes.length > 1 && (
+                    <button
+                      onClick={() => removeSnake(i)}
+                      className="px-2 py-1 text-xs rounded bg-ember/20 text-ember"
+                    >
+                      X
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addSnake}
+                className="text-sm text-lagoon hover:underline"
+              >
+                + Add Snake
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sand/80 text-sm mb-1">Expected Safe Moves</label>
+            <div className="flex gap-2">
+              {["up", "down", "left", "right"].map((move) => (
+                <button
+                  key={move}
+                  onClick={() => {
+                    if (expectedSafeMoves.includes(move)) {
+                      setExpectedSafeMoves(expectedSafeMoves.filter((m) => m !== move));
+                    } else {
+                      setExpectedSafeMoves([...expectedSafeMoves, move]);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded text-sm ${expectedSafeMoves.includes(move) ? "bg-moss text-ink" : "bg-sand/10 text-sand"}`}
+                >
+                  {move}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubmit}
+              className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80"
+            >
+              Save Test
+            </button>
+            <button
+              onClick={onCancel}
+              className="bg-sand/10 text-sand px-4 py-2 rounded hover:bg-sand/20"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sand/80 text-sm mb-1">Board Preview</label>
+          <div
+            className="inline-grid gap-0.5 bg-night p-2 rounded"
+            style={{ gridTemplateColumns: `repeat(${boardWidth}, 1fr)` }}
+          >
+            {Array.from({ length: boardHeight }).map((_, row) =>
+              Array.from({ length: boardWidth }).map((_, col) => {
+                const y = boardHeight - 1 - row;
+                const x = col;
+                const content = getCellContent(x, y);
+                return (
+                  <button
+                    key={`${x}-${y}`}
+                    onClick={() => handleCellClick(x, y)}
+                    className="w-6 h-6 rounded-sm border border-sand/10"
+                    style={{
+                      backgroundColor: content
+                        ? content.type === "food"
+                          ? "#e55b3c"
+                          : content.type === "hazard"
+                          ? "#6b21a8"
+                          : content.color
+                        : "#1a1a2e",
+                    }}
+                  >
+                    {content?.type === "head" && (
+                      <span className="text-[8px] text-white">{content.isYou ? "Y" : ""}</span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <p className="text-sand/40 text-xs mt-2">Click cells to place/remove elements</p>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { api } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import { requireUserSession, requireAdmin } from "./auth";
 
 const coordinate = v.object({ x: v.number(), y: v.number() });
 const snake = v.object({
@@ -400,5 +401,402 @@ export const runTest = action({
         error: error instanceof Error ? error.message : "Request failed.",
       };
     }
+  },
+});
+
+export const listPublicTests = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("tests")
+      .withIndex("by_status", (q) => q.eq("status", "approved"))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const listPendingTests = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    return await ctx.db
+      .query("tests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const listMyTests = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    return await ctx.db
+      .query("tests")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", userId as Id<"users">))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const createUserTest = mutation({
+  args: {
+    token: v.string(),
+    name: v.string(),
+    board,
+    game,
+    turn: v.number(),
+    youId: v.string(),
+    expectedSafeMoves: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const youExists = args.board.snakes.some((snakeItem) => {
+      return snakeItem.id === args.youId;
+    });
+    if (!youExists) {
+      throw new Error("youId must match a snake in the board.");
+    }
+    const createdAt = Date.now();
+    const id = await ctx.db.insert("tests", {
+      name: args.name,
+      board: args.board,
+      game: args.game,
+      turn: args.turn,
+      youId: args.youId,
+      expectedSafeMoves: args.expectedSafeMoves,
+      createdAt,
+      ownerId: userId as Id<"users">,
+      status: "pending",
+    });
+    return await ctx.db.get(id);
+  },
+});
+
+export const updateUserTest = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("tests"),
+    name: v.string(),
+    board,
+    game,
+    turn: v.number(),
+    youId: v.string(),
+    expectedSafeMoves: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    if (test.ownerId !== userId) {
+      throw new Error("You don't have permission to edit this test.");
+    }
+    const youExists = args.board.snakes.some((snakeItem) => {
+      return snakeItem.id === args.youId;
+    });
+    if (!youExists) {
+      throw new Error("youId must match a snake in the board.");
+    }
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      board: args.board,
+      game: args.game,
+      turn: args.turn,
+      youId: args.youId,
+      expectedSafeMoves: args.expectedSafeMoves,
+      status: "pending",
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const deleteUserTest = mutation({
+  args: { token: v.string(), id: v.id("tests") },
+  handler: async (ctx, args) => {
+    const { userId, isAdmin } = await requireUserSession(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    if (test.ownerId !== userId && !isAdmin) {
+      throw new Error("You don't have permission to delete this test.");
+    }
+    const collectionTests = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_testId", (q) => q.eq("testId", args.id))
+      .collect();
+    for (const ct of collectionTests) {
+      await ctx.db.delete(ct._id);
+    }
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const approveTest = mutation({
+  args: { token: v.string(), id: v.id("tests") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireAdmin(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    await ctx.db.patch(args.id, {
+      status: "approved",
+      approvedBy: userId as Id<"users">,
+      approvedAt: Date.now(),
+      rejectionReason: undefined,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const rejectTest = mutation({
+  args: { token: v.string(), id: v.id("tests"), reason: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      rejectionReason: args.reason,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+function generateSlug(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let slug = "";
+  for (let i = 0; i < 8; i++) {
+    slug += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return slug;
+}
+
+export const listCollections = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    return await ctx.db
+      .query("collections")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", userId as Id<"users">))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const createCollection = mutation({
+  args: {
+    token: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPublic: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const now = Date.now();
+    const shareSlug = generateSlug();
+    const id = await ctx.db.insert("collections", {
+      name: args.name,
+      description: args.description,
+      ownerId: userId as Id<"users">,
+      isPublic: args.isPublic,
+      shareSlug,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return await ctx.db.get(id);
+  },
+});
+
+export const updateCollection = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("collections"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    isPublic: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.id);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to edit this collection.");
+    }
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      description: args.description,
+      isPublic: args.isPublic,
+      updatedAt: Date.now(),
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const deleteCollection = mutation({
+  args: { token: v.string(), id: v.id("collections") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.id);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to delete this collection.");
+    }
+    const collectionTests = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", args.id))
+      .collect();
+    for (const ct of collectionTests) {
+      await ctx.db.delete(ct._id);
+    }
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const regenerateShareSlug = mutation({
+  args: { token: v.string(), id: v.id("collections") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.id);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to modify this collection.");
+    }
+    const newSlug = generateSlug();
+    await ctx.db.patch(args.id, {
+      shareSlug: newSlug,
+      updatedAt: Date.now(),
+    });
+    return { shareSlug: newSlug };
+  },
+});
+
+export const addTestToCollection = mutation({
+  args: { token: v.string(), collectionId: v.id("collections"), testId: v.id("tests") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to modify this collection.");
+    }
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    if (test.ownerId !== userId) {
+      throw new Error("You can only add your own tests to collections.");
+    }
+    const existing = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", args.collectionId))
+      .filter((q) => q.eq(q.field("testId"), args.testId))
+      .first();
+    if (existing) {
+      throw new Error("Test is already in this collection.");
+    }
+    await ctx.db.insert("collectionTests", {
+      collectionId: args.collectionId,
+      testId: args.testId,
+      addedAt: Date.now(),
+    });
+    return { ok: true };
+  },
+});
+
+export const removeTestFromCollection = mutation({
+  args: { token: v.string(), collectionId: v.id("collections"), testId: v.id("tests") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to modify this collection.");
+    }
+    const ct = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", args.collectionId))
+      .filter((q) => q.eq(q.field("testId"), args.testId))
+      .first();
+    if (ct) {
+      await ctx.db.delete(ct._id);
+    }
+    return { ok: true };
+  },
+});
+
+export const getCollectionTests = query({
+  args: { token: v.string(), collectionId: v.id("collections") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection) {
+      throw new Error("Collection not found.");
+    }
+    if (collection.ownerId !== userId) {
+      throw new Error("You don't have permission to view this collection.");
+    }
+    const collectionTests = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", args.collectionId))
+      .collect();
+    const tests = [];
+    for (const ct of collectionTests) {
+      const test = await ctx.db.get(ct.testId);
+      if (test) {
+        tests.push(test);
+      }
+    }
+    return tests;
+  },
+});
+
+export const getCollectionBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const collection = await ctx.db
+      .query("collections")
+      .withIndex("by_shareSlug", (q) => q.eq("shareSlug", args.slug))
+      .first();
+    if (!collection) {
+      return null;
+    }
+    if (!collection.isPublic) {
+      return null;
+    }
+    const owner = await ctx.db.get(collection.ownerId);
+    const collectionTests = await ctx.db
+      .query("collectionTests")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", collection._id))
+      .collect();
+    const tests = [];
+    for (const ct of collectionTests) {
+      const test = await ctx.db.get(ct.testId);
+      if (test) {
+        tests.push(test);
+      }
+    }
+    return {
+      collection: {
+        ...collection,
+        ownerName: owner?.username ?? "Unknown",
+      },
+      tests,
+    };
   },
 });
