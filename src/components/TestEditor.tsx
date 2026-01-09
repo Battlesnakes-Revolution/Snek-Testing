@@ -515,7 +515,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                       <span className="text-sm">🎃</span>
                     )}
                     {content?.type === "hazard" && (
-                      <span className="text-sm">❗</span>
+                      <span className="text-sm">❕</span>
                     )}
                     {content?.type === "head" && (
                       <span className="text-white z-10">{content.headEmoji || (content.isYou ? "👍" : "🐍")}</span>

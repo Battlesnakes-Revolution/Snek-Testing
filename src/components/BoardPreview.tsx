@@ -164,7 +164,7 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                 <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>🎃</span>
               )}
               {content?.type === "hazard" && (
-                <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>❗</span>
+                <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>❕</span>
               )}
               {content?.type === "head" && (
                 <span
