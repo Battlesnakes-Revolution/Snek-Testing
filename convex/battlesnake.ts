@@ -775,8 +775,8 @@ export const addTestToCollection = mutation({
     if (!test) {
       throw new Error("Test not found.");
     }
-    if (test.ownerId !== userId) {
-      throw new Error("You can only add your own tests to collections.");
+    if (test.ownerId !== userId && test.status !== "approved") {
+      throw new Error("You can only add your own tests or public tests to collections.");
     }
     const existing = await ctx.db
       .query("collectionTests")

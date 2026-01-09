@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "../contexts/AuthContext";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -39,14 +39,20 @@ type RunResult = {
 };
 
 export default function HomePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const [botUrl, setBotUrl] = useState(() => localStorage.getItem("botUrl") ?? "");
   const [results, setResults] = useState<Record<string, RunResult>>({});
   const [runningIds, setRunningIds] = useState<Record<string, boolean>>({});
   const [expandedTest, setExpandedTest] = useState<Id<"tests"> | null>(null);
+  const [addingToCollection, setAddingToCollection] = useState<Id<"tests"> | null>(null);
 
   const publicTests = useQuery(api.battlesnake.listPublicTests);
+  const collections = useQuery(
+    api.battlesnake.listCollections,
+    token ? { token } : "skip"
+  );
   const runTest = useAction(api.battlesnake.runTest);
+  const addTestToCollection = useMutation(api.battlesnake.addTestToCollection);
 
   const handleRunTest = async (test: Test) => {
     if (!botUrl.trim()) return;
@@ -78,6 +84,16 @@ export default function HomePage() {
     const r = results[t._id];
     return r?.ok && t.expectedSafeMoves.includes(r.move ?? "");
   }).length ?? 0;
+
+  const handleAddToCollection = async (collectionId: Id<"collections">) => {
+    if (!token || !addingToCollection) return;
+    try {
+      await addTestToCollection({ token, collectionId, testId: addingToCollection });
+      setAddingToCollection(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to add test to collection");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-night p-4">
@@ -162,6 +178,14 @@ export default function HomePage() {
                       >
                         {expandedTest === test._id ? "Hide" : "Show"}
                       </button>
+                      {user && collections && collections.length > 0 && (
+                        <button
+                          onClick={() => setAddingToCollection(addingToCollection === test._id ? null : test._id)}
+                          className="text-sm px-3 py-1 bg-moss/20 text-moss rounded hover:bg-moss/30"
+                        >
+                          + Collection
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRunTest(test)}
                         disabled={isRunning || !botUrl.trim()}
@@ -174,6 +198,29 @@ export default function HomePage() {
                   <p className="text-sand/60 text-sm">
                     Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}
                   </p>
+
+                  {addingToCollection === test._id && collections && (
+                    <div className="mt-2 p-2 bg-night rounded border border-sand/20">
+                      <p className="text-sand/80 text-sm mb-2">Add to collection:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {collections.map((col) => (
+                          <button
+                            key={col._id}
+                            onClick={() => handleAddToCollection(col._id)}
+                            className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
+                          >
+                            {col.name}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setAddingToCollection(null)}
+                          className="text-sm px-3 py-1 bg-sand/10 text-sand rounded hover:bg-sand/20"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {expandedTest === test._id && (
                     <div className="my-4">
