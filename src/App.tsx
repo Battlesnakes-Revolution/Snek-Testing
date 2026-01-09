@@ -1234,6 +1234,7 @@ function BoardView({
         color: string;
         isYou: boolean;
         snakeId: string;
+        bodyIndex: number;
       }
     >();
     const squadColors: Record<string, string> = {};
@@ -1245,23 +1246,15 @@ function BoardView({
           FALLBACK_SQUAD_COLORS[colorIndex % FALLBACK_SQUAD_COLORS.length];
         colorIndex += 1;
       }
-      const headKey = `${snakeItem.head.x},${snakeItem.head.y}`;
-      snakeCells.set(headKey, {
-        type: "head",
-        color: squadColors[squadKey],
-        isYou: snakeItem.id === youId,
-        snakeId: snakeItem.id,
-      });
-      snakeItem.body.forEach((segment) => {
+      snakeItem.body.forEach((segment, bodyIndex) => {
         const key = `${segment.x},${segment.y}`;
-        if (key === headKey) {
-          return;
-        }
+        const isHead = bodyIndex === 0;
         snakeCells.set(key, {
-          type: "body",
+          type: isHead ? "head" : "body",
           color: squadColors[squadKey],
           isYou: snakeItem.id === youId,
           snakeId: snakeItem.id,
+          bodyIndex,
         });
       });
     });
@@ -1325,12 +1318,15 @@ function BoardView({
             const hasSnake = Boolean(snakeCell);
             const neighbor = (dx: number, dy: number) =>
               positionMap.snakeCells.get(`${x + dx},${y + dy}`);
-            const sameSnake = (cell?: { snakeId: string } | undefined) =>
-              cell && snakeCell && cell.snakeId === snakeCell.snakeId;
-            const connectRight = hasSnake && sameSnake(neighbor(1, 0));
-            const connectLeft = hasSnake && sameSnake(neighbor(-1, 0));
-            const connectUp = hasSnake && sameSnake(neighbor(0, 1));
-            const connectDown = hasSnake && sameSnake(neighbor(0, -1));
+            const isConnected = (cell?: { snakeId: string; bodyIndex: number } | undefined) =>
+              cell &&
+              snakeCell &&
+              cell.snakeId === snakeCell.snakeId &&
+              Math.abs(cell.bodyIndex - snakeCell.bodyIndex) === 1;
+            const connectRight = hasSnake && isConnected(neighbor(1, 0));
+            const connectLeft = hasSnake && isConnected(neighbor(-1, 0));
+            const connectUp = hasSnake && isConnected(neighbor(0, 1));
+            const connectDown = hasSnake && isConnected(neighbor(0, -1));
             const cellBackground = isHazard
               ? "rgba(220, 38, 38, 0.85)"
               : isFood
