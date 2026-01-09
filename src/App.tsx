@@ -1329,15 +1329,15 @@ function BoardView({
             const hasSnake = Boolean(snakeCell);
             const neighbor = (dx: number, dy: number) =>
               positionMap.snakeCells.get(`${x + dx},${y + dy}`);
-            const isConnected = (cell?: { snakeId: string; bodyIndex: number } | undefined) =>
+            const isConnectedToPrevious = (cell?: { snakeId: string; bodyIndex: number } | undefined) =>
               cell &&
               snakeCell &&
               cell.snakeId === snakeCell.snakeId &&
-              Math.abs(cell.bodyIndex - snakeCell.bodyIndex) === 1;
-            const connectRight = hasSnake && isConnected(neighbor(1, 0));
-            const connectLeft = hasSnake && isConnected(neighbor(-1, 0));
-            const connectUp = hasSnake && isConnected(neighbor(0, 1));
-            const connectDown = hasSnake && isConnected(neighbor(0, -1));
+              cell.bodyIndex === snakeCell.bodyIndex - 1;
+            const connectRight = hasSnake && isConnectedToPrevious(neighbor(1, 0));
+            const connectLeft = hasSnake && isConnectedToPrevious(neighbor(-1, 0));
+            const connectUp = hasSnake && isConnectedToPrevious(neighbor(0, 1));
+            const connectDown = hasSnake && isConnectedToPrevious(neighbor(0, -1));
             const cellBackground = isHazard
               ? "rgba(220, 38, 38, 0.85)"
               : isFood
