@@ -107,7 +107,12 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
       const newSnakes = [...snakes];
       const snake = { ...newSnakes[selectedSnakeIndex] };
       snake.head = { x, y };
-      snake.body = [{ x, y }, ...snake.body.slice(1)];
+      if (snake.body.length === 0) {
+        snake.body = [{ x, y }];
+        snake.length = 1;
+      } else {
+        snake.body = [{ x, y }, ...snake.body.slice(1)];
+      }
       newSnakes[selectedSnakeIndex] = snake;
       setSnakes(newSnakes);
     } else if (tool === "snake-body" && snakes[selectedSnakeIndex]) {
@@ -130,8 +135,17 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
 
   const addSnake = () => {
     const id = `snake-${snakes.length + 1}`;
-    const newX = (snakes.length * 2 + 3) % boardWidth;
-    setSnakes([...snakes, makeDefaultSnake(id, `Snake ${snakes.length + 1}`, newX)]);
+    const newSnake: Snake = {
+      id,
+      name: `Snake ${snakes.length + 1}`,
+      health: 100,
+      body: [],
+      head: { x: -1, y: -1 },
+      length: 0,
+    };
+    setSnakes([...snakes, newSnake]);
+    setSelectedSnakeIndex(snakes.length);
+    setTool("snake-head");
   };
 
   const removeSnake = (index: number) => {
