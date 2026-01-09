@@ -109,7 +109,7 @@ export default function AdminPage() {
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-sand">Admin Panel</h1>
-            <p className="text-sand/60">Review and approve pending tests</p>
+            <p className="text-sand/60">Manage all tests</p>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/" className="text-sand/60 hover:text-sand">Home</Link>
