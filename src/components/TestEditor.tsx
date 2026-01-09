@@ -213,29 +213,25 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
         backgroundColor: color,
       };
       if (c.direction === "left") {
-        style.left = "-5px";
-        style.top = "50%";
-        style.transform = "translateY(-50%)";
-        style.width = "6px";
-        style.height = "12px";
+        style.left = "-4px";
+        style.top = "0";
+        style.width = "4px";
+        style.height = "100%";
       } else if (c.direction === "right") {
-        style.right = "-5px";
-        style.top = "50%";
-        style.transform = "translateY(-50%)";
-        style.width = "6px";
-        style.height = "12px";
+        style.right = "-4px";
+        style.top = "0";
+        style.width = "4px";
+        style.height = "100%";
       } else if (c.direction === "up") {
-        style.top = "-5px";
-        style.left = "50%";
-        style.transform = "translateX(-50%)";
-        style.width = "12px";
-        style.height = "6px";
+        style.top = "-4px";
+        style.left = "0";
+        style.width = "100%";
+        style.height = "4px";
       } else if (c.direction === "down") {
-        style.bottom = "-5px";
-        style.left = "50%";
-        style.transform = "translateX(-50%)";
-        style.width = "12px";
-        style.height = "6px";
+        style.bottom = "-4px";
+        style.left = "0";
+        style.width = "100%";
+        style.height = "4px";
       }
       return <div key={i} style={style} />;
     });
