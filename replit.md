@@ -34,8 +34,16 @@ The core data structures represent Battlesnake game state:
 - **Tests Table**: Stores test scenarios with board state, expected safe moves, and snake identification
 
 ### Security Features
-- Admin password protection via environment variable (`BATTLESNAKE_ADMIN_PASSWORD`)
-- Rate limiting window of 5 minutes for certain operations
+- User authentication with bcrypt password hashing and session tokens
+- Admin access controlled via `isAdmin` field in user document (set manually in Convex dashboard)
+- Rate limiting: 5 login/register attempts per 5-minute window
+
+### Admin Setup
+To make a user an admin:
+1. Have them register a normal account
+2. Go to the Convex dashboard (https://dashboard.convex.dev)
+3. Find the user in the `users` table
+4. Set `isAdmin: true`
 
 ## External Dependencies
 
