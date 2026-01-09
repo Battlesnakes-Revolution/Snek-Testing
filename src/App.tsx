@@ -1369,10 +1369,10 @@ function BoardView({
                       <span
                         className="absolute pointer-events-none z-0"
                         style={{
-                          right: "-50%",
+                          left: "4px",
+                          right: "calc(-100% + 4px)",
                           top: "4px",
                           bottom: "4px",
-                          width: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1381,10 +1381,10 @@ function BoardView({
                       <span
                         className="absolute pointer-events-none z-0"
                         style={{
-                          left: "-50%",
+                          right: "4px",
+                          left: "calc(-100% + 4px)",
                           top: "4px",
                           bottom: "4px",
-                          width: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1393,10 +1393,10 @@ function BoardView({
                       <span
                         className="absolute pointer-events-none z-0"
                         style={{
-                          top: "-50%",
+                          bottom: "4px",
+                          top: "calc(-100% + 4px)",
                           left: "4px",
                           right: "4px",
-                          height: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
@@ -1405,10 +1405,10 @@ function BoardView({
                       <span
                         className="absolute pointer-events-none z-0"
                         style={{
-                          bottom: "-50%",
+                          top: "4px",
+                          bottom: "calc(-100% + 4px)",
                           left: "4px",
                           right: "4px",
-                          height: "calc(50% - 4px)",
                           background: snakeCell?.color,
                         }}
                       />
