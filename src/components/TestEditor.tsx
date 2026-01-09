@@ -180,6 +180,16 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
       alert("Please select at least one expected safe move");
       return;
     }
+    const unplacedSnakes = snakes.filter((s) => s.body.length === 0);
+    if (unplacedSnakes.length > 0) {
+      alert(`Please place all snakes on the board. Unplaced: ${unplacedSnakes.map((s) => s.name).join(", ")}`);
+      return;
+    }
+    const youSnake = snakes.find((s) => s.id === youId);
+    if (!youSnake || youSnake.body.length === 0) {
+      alert("Please place your snake (the one marked as 'You') on the board");
+      return;
+    }
     onSave({
       name,
       board: {
