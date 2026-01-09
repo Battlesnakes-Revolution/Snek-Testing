@@ -88,7 +88,9 @@ export default function AdminPage() {
     for (let i = 0; i < board.snakes.length; i++) {
       const snake = board.snakes[i];
       if (snake.head.x === x && snake.head.y === y) {
-        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou: snake.id === youId };
+        const isYou = snake.id === youId;
+        const label = isYou ? "Y" : String(i + 1);
+        return { type: "head", color: SNAKE_COLORS[i % SNAKE_COLORS.length], isYou, label };
       }
       if (snake.body.some((b, idx) => idx > 0 && b.x === x && b.y === y)) {
         return { type: "body", color: SNAKE_COLORS[i % SNAKE_COLORS.length] };
@@ -194,7 +196,7 @@ export default function AdminPage() {
                               return (
                                 <div
                                   key={`${x}-${y}`}
-                                  className="w-5 h-5 rounded-sm border border-sand/10"
+                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
@@ -206,8 +208,8 @@ export default function AdminPage() {
                                   }}
                                 >
                                   {content?.type === "head" && (
-                                    <span className="text-[8px] text-white flex items-center justify-center h-full">
-                                      {content.isYou ? "Y" : ""}
+                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                                      {content.label}
                                     </span>
                                   )}
                                 </div>
@@ -287,7 +289,7 @@ export default function AdminPage() {
                               return (
                                 <div
                                   key={`${x}-${y}`}
-                                  className="w-5 h-5 rounded-sm border border-sand/10"
+                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
@@ -299,8 +301,8 @@ export default function AdminPage() {
                                   }}
                                 >
                                   {content?.type === "head" && (
-                                    <span className="text-[8px] text-white flex items-center justify-center h-full">
-                                      {content.isYou ? "Y" : ""}
+                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                                      {content.label}
                                     </span>
                                   )}
                                 </div>
@@ -364,7 +366,7 @@ export default function AdminPage() {
                               return (
                                 <div
                                   key={`${x}-${y}`}
-                                  className="w-5 h-5 rounded-sm border border-sand/10"
+                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
@@ -376,8 +378,8 @@ export default function AdminPage() {
                                   }}
                                 >
                                   {content?.type === "head" && (
-                                    <span className="text-[8px] text-white flex items-center justify-center h-full">
-                                      {content.isYou ? "Y" : ""}
+                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                                      {content.label}
                                     </span>
                                   )}
                                 </div>
@@ -441,7 +443,7 @@ export default function AdminPage() {
                               return (
                                 <div
                                   key={`${x}-${y}`}
-                                  className="w-5 h-5 rounded-sm border border-sand/10"
+                                  className={`w-5 h-5 rounded-sm flex items-center justify-center ${content?.type === "head" ? "ring-1 ring-white/60 scale-110" : "border border-sand/10"}`}
                                   style={{
                                     backgroundColor: content
                                       ? content.type === "food"
@@ -453,8 +455,8 @@ export default function AdminPage() {
                                   }}
                                 >
                                   {content?.type === "head" && (
-                                    <span className="text-[8px] text-white flex items-center justify-center h-full">
-                                      {content.isYou ? "Y" : ""}
+                                    <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                                      {content.label}
                                     </span>
                                   )}
                                 </div>
