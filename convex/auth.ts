@@ -121,7 +121,7 @@ export const register = mutation({
       return { ok: false, error: "This username is already taken." };
     }
 
-    const passwordHash = await bcrypt.hash(args.password, 10);
+    const passwordHash = bcrypt.hashSync(args.password, 10);
     const now = Date.now();
 
     const userId = await ctx.db.insert("users", {
@@ -175,7 +175,7 @@ export const login = mutation({
       return { ok: false, error: "Invalid email or password." };
     }
 
-    const valid = await bcrypt.compare(args.password, user.passwordHash);
+    const valid = bcrypt.compareSync(args.password, user.passwordHash);
     if (!valid) {
       await recordFailedAttempt(ctx, args.clientId);
       return { ok: false, error: "Invalid email or password." };
