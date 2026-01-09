@@ -502,15 +502,19 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
                     className="w-7 h-7 rounded border border-sand/20 relative flex items-center justify-center text-[10px] font-bold overflow-visible"
                     style={{
                       backgroundColor: content
-                        ? content.type === "food"
-                          ? "#22c55e"
-                          : content.type === "hazard"
-                          ? "#dc2626"
+                        ? content.type === "food" || content.type === "hazard"
+                          ? "#1a1a2e"
                           : content.color
                         : "#1a1a2e",
                     }}
                   >
                     {connectors}
+                    {content?.type === "food" && (
+                      <span className="text-sm">🎃</span>
+                    )}
+                    {content?.type === "hazard" && (
+                      <span className="text-sm">❗</span>
+                    )}
                     {content?.type === "head" && (
                       <span className="text-white z-10">{content.headEmoji || (content.isYou ? "👍" : "🐍")}</span>
                     )}

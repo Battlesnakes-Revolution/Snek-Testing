@@ -151,15 +151,19 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                 width: `${cellSize}px`,
                 height: `${cellSize}px`,
                 backgroundColor: content
-                  ? content.type === "food"
-                    ? "#22c55e"
-                    : content.type === "hazard"
-                    ? "#dc2626"
+                  ? content.type === "food" || content.type === "hazard"
+                    ? "#1a1a2e"
                     : content.color
                   : "#1a1a2e",
               }}
             >
               {connectors}
+              {content?.type === "food" && (
+                <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>🎃</span>
+              )}
+              {content?.type === "hazard" && (
+                <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>❗</span>
+              )}
               {content?.type === "head" && (
                 <span
                   className="font-bold text-white drop-shadow-sm z-10"
