@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import bcrypt from "bcryptjs";
-import { OAuth2Client } from "google-auth-library";
+import * as jose from "jose";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -92,6 +92,10 @@ export const register = mutation({
   },
 });
 
+const GOOGLE_JWKS = jose.createRemoteJWKSet(
+  new URL("https://www.googleapis.com/oauth2/v3/certs")
+);
+
 export const googleSignIn = mutation({
   args: {
     credential: v.string(),
@@ -102,26 +106,30 @@ export const googleSignIn = mutation({
       return { ok: false, error: "Google sign-in is not configured." };
     }
 
-    const client = new OAuth2Client(clientId);
-    
-    let payload;
+    let payload: jose.JWTPayload;
     try {
-      const ticket = await client.verifyIdToken({
-        idToken: args.credential,
-        audience: clientId,
-      });
-      payload = ticket.getPayload();
+      const { payload: verifiedPayload } = await jose.jwtVerify(
+        args.credential,
+        GOOGLE_JWKS,
+        {
+          issuer: ["https://accounts.google.com", "accounts.google.com"],
+          audience: clientId,
+        }
+      );
+      payload = verifiedPayload;
     } catch {
       return { ok: false, error: "Invalid Google credential." };
     }
 
-    if (!payload || !payload.sub || !payload.email) {
+    const sub = payload.sub as string | undefined;
+    const email = payload.email as string | undefined;
+    const name = (payload.name as string) || (email ? email.split("@")[0] : "user");
+
+    if (!sub || !email) {
       return { ok: false, error: "Invalid Google credential." };
     }
 
-    const googleId = payload.sub;
-    const email = payload.email;
-    const name = payload.name || email.split("@")[0];
+    const googleId = sub;
     const emailLower = email.toLowerCase().trim();
     
     let user = await ctx.db
