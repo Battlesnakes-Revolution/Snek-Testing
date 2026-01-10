@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 type User = {
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const loginMutation = useMutation(api.auth.login);
-  const googleSignInMutation = useMutation(api.auth.googleSignIn);
+  const googleSignInAction = useAction(api.auth.googleSignIn);
   const logoutMutation = useMutation(api.auth.logout);
   const currentUser = useQuery(api.auth.getCurrentUser, token ? { token } : "skip");
 
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleSignIn = async (credential: string) => {
-    const result = await googleSignInMutation({ credential });
+    const result = await googleSignInAction({ credential });
     if (result.ok && result.token) {
       localStorage.setItem("userToken", result.token);
       setToken(result.token);

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import bcrypt from "bcryptjs";
 import * as jose from "jose";
@@ -96,11 +97,11 @@ const GOOGLE_JWKS = jose.createRemoteJWKSet(
   new URL("https://www.googleapis.com/oauth2/v3/certs")
 );
 
-export const googleSignIn = mutation({
+export const googleSignIn = action({
   args: {
     credential: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ ok: boolean; error?: string; token?: string; user?: { id: string; email: string; username: string; isAdmin: boolean } }> => {
     const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
       return { ok: false, error: "Google sign-in is not configured." };
@@ -129,12 +130,28 @@ export const googleSignIn = mutation({
       return { ok: false, error: "Invalid Google credential." };
     }
 
-    const googleId = sub;
-    const emailLower = email.toLowerCase().trim();
+    const result = await ctx.runMutation(internal.auth.createGoogleSession, {
+      googleId: sub,
+      email,
+      name,
+    });
+
+    return result;
+  },
+});
+
+export const createGoogleSession = internalMutation({
+  args: {
+    googleId: v.string(),
+    email: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const emailLower = args.email.toLowerCase().trim();
     
     let user = await ctx.db
       .query("users")
-      .withIndex("by_googleId", (q) => q.eq("googleId", googleId))
+      .withIndex("by_googleId", (q) => q.eq("googleId", args.googleId))
       .first();
 
     if (!user) {
@@ -144,23 +161,23 @@ export const googleSignIn = mutation({
         .first();
       
       if (user) {
-        await ctx.db.patch(user._id, { googleId });
+        await ctx.db.patch(user._id, { googleId: args.googleId });
       }
     }
 
     const now = Date.now();
 
     if (!user) {
-      const username = name.replace(/\s+/g, "_").toLowerCase().slice(0, 20) + "_" + Math.random().toString(36).slice(2, 6);
+      const username = args.name.replace(/\s+/g, "_").toLowerCase().slice(0, 20) + "_" + Math.random().toString(36).slice(2, 6);
       
       const userId = await ctx.db.insert("users", {
-        email: email.trim(),
+        email: args.email.trim(),
         emailLower,
         passwordHash: "",
         username,
         isAdmin: false,
         createdAt: now,
-        googleId,
+        googleId: args.googleId,
       });
       
       user = await ctx.db.get(userId);

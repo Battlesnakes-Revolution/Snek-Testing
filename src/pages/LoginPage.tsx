@@ -41,8 +41,9 @@ export default function LoginPage() {
       } else {
         setError(result.error ?? "Google sign-in failed");
       }
-    } catch {
-      setError("Failed to process Google sign-in");
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      setError(err instanceof Error ? err.message : "Failed to process Google sign-in");
     }
     setIsLoading(false);
   }, [googleSignIn, navigate]);
