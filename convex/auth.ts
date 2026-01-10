@@ -86,68 +86,70 @@ export const register = mutation({
     username: v.string(),
     clientId: v.string(),
   },
+  handler: async () => {
+    return { ok: false, error: "Registration with email and password is no longer available. Please sign in with Google." };
+  },
+});
+
+export const googleSignIn = mutation({
+  args: {
+    googleId: v.string(),
+    email: v.string(),
+    name: v.string(),
+  },
   handler: async (ctx, args) => {
-    const rateCheck = await checkRateLimit(ctx, args.clientId);
-    if (rateCheck.blocked) {
-      return { ok: false, error: "Too many attempts. Try again later.", retryAt: rateCheck.retryAt };
-    }
-
     const emailLower = args.email.toLowerCase().trim();
-    const username = args.username.trim();
-
-    if (!emailLower || !emailLower.includes("@")) {
-      return { ok: false, error: "Please enter a valid email address." };
-    }
-    if (!username || username.length < 2) {
-      return { ok: false, error: "Username must be at least 2 characters." };
-    }
-    if (!args.password || args.password.length < 6) {
-      return { ok: false, error: "Password must be at least 6 characters." };
-    }
-
-    const existingEmail = await ctx.db
+    
+    let user = await ctx.db
       .query("users")
-      .withIndex("by_emailLower", (q) => q.eq("emailLower", emailLower))
+      .withIndex("by_googleId", (q) => q.eq("googleId", args.googleId))
       .first();
-    if (existingEmail) {
-      return { ok: false, error: "An account with this email already exists." };
+
+    if (!user) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_emailLower", (q) => q.eq("emailLower", emailLower))
+        .first();
+      
+      if (user) {
+        await ctx.db.patch(user._id, { googleId: args.googleId });
+      }
     }
 
-    const existingUsername = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", username))
-      .first();
-    if (existingUsername) {
-      return { ok: false, error: "This username is already taken." };
-    }
-
-    const passwordHash = bcrypt.hashSync(args.password, 10);
     const now = Date.now();
 
-    const userId = await ctx.db.insert("users", {
-      email: args.email.trim(),
-      emailLower,
-      passwordHash,
-      username,
-      isAdmin: false,
-      createdAt: now,
-    });
+    if (!user) {
+      const username = args.name.replace(/\s+/g, "_").toLowerCase().slice(0, 20) + "_" + Math.random().toString(36).slice(2, 6);
+      
+      const userId = await ctx.db.insert("users", {
+        email: args.email.trim(),
+        emailLower,
+        passwordHash: "",
+        username,
+        isAdmin: false,
+        createdAt: now,
+        googleId: args.googleId,
+      });
+      
+      user = await ctx.db.get(userId);
+    }
+
+    if (!user) {
+      return { ok: false, error: "Failed to create or find user." };
+    }
 
     const token = crypto.randomUUID();
     await ctx.db.insert("userSessions", {
-      userId,
+      userId: user._id,
       token,
       createdAt: now,
       expiresAt: now + SESSION_TTL_MS,
     });
 
-    await resetRateLimit(ctx, args.clientId);
-
-    const user = await ctx.db.get(userId);
     return {
       ok: true,
       token,
-      user: user ? { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin } : null,
+      user: { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin },
     };
   },
 });

@@ -14,7 +14,7 @@ type AuthContextType = {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (email: string, password: string, username: string) => Promise<{ ok: boolean; error?: string }>;
+  googleSignIn: (googleId: string, email: string, name: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 };
 
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const loginMutation = useMutation(api.auth.login);
-  const registerMutation = useMutation(api.auth.register);
+  const googleSignInMutation = useMutation(api.auth.googleSignIn);
   const logoutMutation = useMutation(api.auth.logout);
   const currentUser = useQuery(api.auth.getCurrentUser, token ? { token } : "skip");
 
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: false, error: result.error };
   };
 
-  const register = async (email: string, password: string, username: string) => {
-    const result = await registerMutation({ email, password, username, clientId: getClientId() });
+  const googleSignIn = async (googleId: string, email: string, name: string) => {
+    const result = await googleSignInMutation({ googleId, email, name });
     if (result.ok && result.token) {
       localStorage.setItem("userToken", result.token);
       setToken(result.token);
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = currentUser ?? null;
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, googleSignIn, logout }}>
       {children}
     </AuthContext.Provider>
   );

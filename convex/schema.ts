@@ -52,9 +52,11 @@ export default defineSchema({
     username: v.string(),
     isAdmin: v.boolean(),
     createdAt: v.number(),
+    googleId: v.optional(v.string()),
   })
     .index("by_emailLower", ["emailLower"])
-    .index("by_username", ["username"]),
+    .index("by_username", ["username"])
+    .index("by_googleId", ["googleId"]),
 
   userSessions: defineTable({
     userId: v.id("users"),
