@@ -113,12 +113,9 @@ export default function HomePage() {
                 <button onClick={logout} className="text-sand/60 hover:text-sand">Log Out</button>
               </>
             ) : (
-              <>
-                <Link to="/login" className="text-lagoon hover:underline">Log In</Link>
-                <Link to="/register" className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80">
-                  Sign Up
-                </Link>
-              </>
+              <Link to="/login" className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80">
+                Sign In
+              </Link>
             )}
           </div>
         </header>
@@ -157,7 +154,7 @@ export default function HomePage() {
             <p className="text-sand/60 mb-4">No public tests available yet.</p>
             {!user && (
               <p className="text-sand/40 text-sm">
-                <Link to="/register" className="text-lagoon hover:underline">Create an account</Link> to submit your own tests for review.
+                <Link to="/login" className="text-lagoon hover:underline">Sign in</Link> to submit your own tests for review.
               </p>
             )}
           </div>
