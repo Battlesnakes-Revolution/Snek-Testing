@@ -93,10 +93,6 @@ export const register = mutation({
   },
 });
 
-const GOOGLE_JWKS = jose.createRemoteJWKSet(
-  new URL("https://www.googleapis.com/oauth2/v3/certs")
-);
-
 export const googleSignIn = action({
   args: {
     credential: v.string(),
@@ -104,22 +100,27 @@ export const googleSignIn = action({
   handler: async (ctx, args): Promise<{ ok: boolean; error?: string; token?: string; user?: { id: string; email: string; username: string; isAdmin: boolean } }> => {
     const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return { ok: false, error: "Google sign-in is not configured." };
+      console.error("VITE_GOOGLE_CLIENT_ID not set in Convex environment");
+      return { ok: false, error: "Google sign-in is not configured. Please set VITE_GOOGLE_CLIENT_ID in Convex dashboard." };
     }
 
     let payload: jose.JWTPayload;
     try {
+      const jwks = jose.createRemoteJWKSet(
+        new URL("https://www.googleapis.com/oauth2/v3/certs")
+      );
       const { payload: verifiedPayload } = await jose.jwtVerify(
         args.credential,
-        GOOGLE_JWKS,
+        jwks,
         {
           issuer: ["https://accounts.google.com", "accounts.google.com"],
           audience: clientId,
         }
       );
       payload = verifiedPayload;
-    } catch {
-      return { ok: false, error: "Invalid Google credential." };
+    } catch (err) {
+      console.error("JWT verification error:", err);
+      return { ok: false, error: "Invalid Google credential. Please try again." };
     }
 
     const sub = payload.sub as string | undefined;
@@ -127,16 +128,20 @@ export const googleSignIn = action({
     const name = (payload.name as string) || (email ? email.split("@")[0] : "user");
 
     if (!sub || !email) {
-      return { ok: false, error: "Invalid Google credential." };
+      return { ok: false, error: "Invalid Google credential - missing user info." };
     }
 
-    const result = await ctx.runMutation(internal.auth.createGoogleSession, {
-      googleId: sub,
-      email,
-      name,
-    });
-
-    return result;
+    try {
+      const result = await ctx.runMutation(internal.auth.createGoogleSession, {
+        googleId: sub,
+        email,
+        name,
+      });
+      return result;
+    } catch (err) {
+      console.error("Session creation error:", err);
+      return { ok: false, error: "Failed to create session. Please try again." };
+    }
   },
 });
 
