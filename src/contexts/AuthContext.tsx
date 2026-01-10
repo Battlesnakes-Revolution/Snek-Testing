@@ -14,7 +14,7 @@ type AuthContextType = {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  googleSignIn: (googleId: string, email: string, name: string) => Promise<{ ok: boolean; error?: string }>;
+  googleSignIn: (credential: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 };
 
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: false, error: result.error };
   };
 
-  const googleSignIn = async (googleId: string, email: string, name: string) => {
-    const result = await googleSignInMutation({ googleId, email, name });
+  const googleSignIn = async (credential: string) => {
+    const result = await googleSignInMutation({ credential });
     if (result.ok && result.token) {
       localStorage.setItem("userToken", result.token);
       setToken(result.token);

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -93,16 +94,39 @@ export const register = mutation({
 
 export const googleSignIn = mutation({
   args: {
-    googleId: v.string(),
-    email: v.string(),
-    name: v.string(),
+    credential: v.string(),
   },
   handler: async (ctx, args) => {
-    const emailLower = args.email.toLowerCase().trim();
+    const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return { ok: false, error: "Google sign-in is not configured." };
+    }
+
+    const client = new OAuth2Client(clientId);
+    
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: args.credential,
+        audience: clientId,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      return { ok: false, error: "Invalid Google credential." };
+    }
+
+    if (!payload || !payload.sub || !payload.email) {
+      return { ok: false, error: "Invalid Google credential." };
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name || email.split("@")[0];
+    const emailLower = email.toLowerCase().trim();
     
     let user = await ctx.db
       .query("users")
-      .withIndex("by_googleId", (q) => q.eq("googleId", args.googleId))
+      .withIndex("by_googleId", (q) => q.eq("googleId", googleId))
       .first();
 
     if (!user) {
@@ -112,23 +136,23 @@ export const googleSignIn = mutation({
         .first();
       
       if (user) {
-        await ctx.db.patch(user._id, { googleId: args.googleId });
+        await ctx.db.patch(user._id, { googleId });
       }
     }
 
     const now = Date.now();
 
     if (!user) {
-      const username = args.name.replace(/\s+/g, "_").toLowerCase().slice(0, 20) + "_" + Math.random().toString(36).slice(2, 6);
+      const username = name.replace(/\s+/g, "_").toLowerCase().slice(0, 20) + "_" + Math.random().toString(36).slice(2, 6);
       
       const userId = await ctx.db.insert("users", {
-        email: args.email.trim(),
+        email: email.trim(),
         emailLower,
         passwordHash: "",
         username,
         isAdmin: false,
         createdAt: now,
-        googleId: args.googleId,
+        googleId,
       });
       
       user = await ctx.db.get(userId);

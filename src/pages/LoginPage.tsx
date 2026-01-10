@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -21,18 +21,6 @@ declare global {
   }
 }
 
-function parseJwt(token: string) {
-  const base64Url = token.split(".")[1];
-  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  const jsonPayload = decodeURIComponent(
-    atob(base64)
-      .split("")
-      .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-      .join("")
-  );
-  return JSON.parse(jsonPayload);
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +30,22 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const handleGoogleCallback = useCallback(async (response: { credential: string }) => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const result = await googleSignIn(response.credential);
+      if (result.ok) {
+        navigate("/dashboard");
+      } else {
+        setError(result.error ?? "Google sign-in failed");
+      }
+    } catch {
+      setError("Failed to process Google sign-in");
+    }
+    setIsLoading(false);
+  }, [googleSignIn, navigate]);
 
   useEffect(() => {
     if (!googleClientId) return;
@@ -71,24 +75,7 @@ export default function LoginPage() {
     return () => {
       document.body.removeChild(script);
     };
-  }, [googleClientId]);
-
-  const handleGoogleCallback = async (response: { credential: string }) => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      const payload = parseJwt(response.credential);
-      const result = await googleSignIn(payload.sub, payload.email, payload.name);
-      if (result.ok) {
-        navigate("/dashboard");
-      } else {
-        setError(result.error ?? "Google sign-in failed");
-      }
-    } catch {
-      setError("Failed to process Google sign-in");
-    }
-    setIsLoading(false);
-  };
+  }, [googleClientId, handleGoogleCallback]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
