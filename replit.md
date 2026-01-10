@@ -34,9 +34,10 @@ The core data structures represent Battlesnake game state:
 - **Tests Table**: Stores test scenarios with board state, expected safe moves, and snake identification
 
 ### Security Features
-- User authentication with bcrypt password hashing and session tokens
+- User authentication via Google OAuth with server-side token verification (using google-auth-library)
+- Legacy email/password login still supported for existing accounts, but new registrations disabled
 - Admin access controlled via `isAdmin` field in user document (set manually in Convex dashboard)
-- Rate limiting: 5 login/register attempts per 5-minute window
+- Rate limiting: 5 login attempts per 5-minute window
 
 ### Admin Setup
 To make a user an admin:
