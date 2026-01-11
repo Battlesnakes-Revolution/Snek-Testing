@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -420,11 +421,22 @@ export const listPendingTests = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.token);
-    return await ctx.db
+    const tests = await ctx.db
       .query("tests")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("desc")
       .collect();
+    const testsWithSubmitter = await Promise.all(
+      tests.map(async (test) => {
+        let submitterName: string | undefined;
+        if (test.ownerId) {
+          const owner = await ctx.db.get(test.ownerId);
+          submitterName = owner?.googleName || owner?.username || owner?.email;
+        }
+        return { ...test, submitterName };
+      })
+    );
+    return testsWithSubmitter;
   },
 });
 
@@ -626,11 +638,22 @@ export const listRejectedTests = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.token);
-    return await ctx.db
+    const tests = await ctx.db
       .query("tests")
       .withIndex("by_status", (q) => q.eq("status", "rejected"))
       .order("desc")
       .collect();
+    const testsWithSubmitter = await Promise.all(
+      tests.map(async (test) => {
+        let submitterName: string | undefined;
+        if (test.ownerId) {
+          const owner = await ctx.db.get(test.ownerId);
+          submitterName = owner?.googleName || owner?.username || owner?.email;
+        }
+        return { ...test, submitterName };
+      })
+    );
+    return testsWithSubmitter;
   },
 });
 
@@ -638,11 +661,22 @@ export const listPrivateTests = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.token);
-    return await ctx.db
+    const tests = await ctx.db
       .query("tests")
       .withIndex("by_status", (q) => q.eq("status", "private"))
       .order("desc")
       .collect();
+    const testsWithSubmitter = await Promise.all(
+      tests.map(async (test) => {
+        let submitterName: string | undefined;
+        if (test.ownerId) {
+          const owner = await ctx.db.get(test.ownerId);
+          submitterName = owner?.googleName || owner?.username || owner?.email;
+        }
+        return { ...test, submitterName };
+      })
+    );
+    return testsWithSubmitter;
   },
 });
 
@@ -876,5 +910,211 @@ export const getCollectionBySlug = query({
       },
       tests,
     };
+  },
+});
+
+export const startTestRun = mutation({
+  args: {
+    token: v.string(),
+    testId: v.id("tests"),
+    botUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    const runId = await ctx.db.insert("testRuns", {
+      testId: args.testId,
+      userId: userId as Id<"users">,
+      botUrl: args.botUrl,
+      status: "running",
+      startedAt: Date.now(),
+    });
+    return { runId };
+  },
+});
+
+export const getTestRun = query({
+  args: { runId: v.id("testRuns") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.runId);
+  },
+});
+
+export const executeTestRun = action({
+  args: {
+    runId: v.id("testRuns"),
+  },
+  handler: async (ctx, args) => {
+    const run = await ctx.runQuery(api.battlesnake.getTestRun, { runId: args.runId });
+    if (!run) {
+      return { ok: false, error: "Test run not found." };
+    }
+    if (run.status !== "running") {
+      return { ok: false, error: "Test run is not in running state." };
+    }
+
+    const test = (await ctx.runQuery(api.battlesnake.getTest, {
+      id: run.testId,
+    })) as TestDoc | null;
+    if (!test) {
+      await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+        runId: args.runId,
+        status: "failed",
+        error: "Test not found.",
+      });
+      return { ok: false, error: "Test not found." };
+    }
+
+    const you = test.board.snakes.find(
+      (snakeItem: TestDoc["board"]["snakes"][number]) =>
+        snakeItem.id === test.youId,
+    );
+    if (!you) {
+      await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+        runId: args.runId,
+        status: "failed",
+        error: "You snake not found in test.",
+      });
+      return { ok: false, error: "You snake not found in test." };
+    }
+
+    const rawUrl = run.botUrl.trim();
+    if (!rawUrl) {
+      await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+        runId: args.runId,
+        status: "failed",
+        error: "Bot URL is required.",
+      });
+      return { ok: false, error: "Bot URL is required." };
+    }
+    const normalizedUrl = rawUrl.replace(/\/+$/, "");
+    const endpoint = normalizedUrl.endsWith("/move")
+      ? normalizedUrl
+      : `${normalizedUrl}/move`;
+
+    const requestBody = {
+      game: {
+        id: test.game?.id ?? `test-${test._id}`,
+        ruleset: test.game?.ruleset ?? {
+          name: "standard",
+          version: "1.0.0",
+          settings: {
+            foodSpawnChance: 0,
+            minimumFood: 0,
+            hazardDamagePerTurn: 100,
+            hazardMap: "custom",
+          },
+        },
+        map: test.game?.map ?? "custom",
+        timeout: test.game?.timeout ?? 500,
+      },
+      turn: test.turn,
+      board: test.board,
+      you,
+    };
+
+    try {
+      const response: Response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const responseText = await response.text();
+      let data: unknown = null;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+            runId: args.runId,
+            status: "failed",
+            error: `Non-JSON response (${response.status}).`,
+            httpStatus: response.status,
+            rawResponse: responseText.slice(0, 1000),
+          });
+          return { ok: false, error: `Non-JSON response (${response.status}).` };
+        }
+      }
+      if (!response.ok) {
+        await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+          runId: args.runId,
+          status: "failed",
+          error: `HTTP ${response.status}`,
+          httpStatus: response.status,
+          rawResponse: JSON.stringify(data).slice(0, 1000),
+        });
+        return { ok: false, error: `HTTP ${response.status}` };
+      }
+      const move =
+        typeof (data as { move?: unknown })?.move === "string"
+          ? (data as { move: string }).move
+          : null;
+      const shout =
+        typeof (data as { shout?: unknown })?.shout === "string"
+          ? (data as { shout: string }).shout
+          : null;
+      
+      const passed = move !== null && test.expectedSafeMoves.includes(move);
+      
+      await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+        runId: args.runId,
+        status: "completed",
+        move: move ?? undefined,
+        shout: shout ?? undefined,
+        passed,
+        httpStatus: response.status,
+        rawResponse: JSON.stringify(data).slice(0, 1000),
+      });
+      return { ok: true, move, shout, passed };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Request failed.";
+      await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
+        runId: args.runId,
+        status: "failed",
+        error: errorMsg,
+      });
+      return { ok: false, error: errorMsg };
+    }
+  },
+});
+
+export const updateTestRunResult = internalMutation({
+  args: {
+    runId: v.id("testRuns"),
+    status: v.union(v.literal("completed"), v.literal("failed")),
+    move: v.optional(v.string()),
+    shout: v.optional(v.string()),
+    passed: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+    httpStatus: v.optional(v.number()),
+    rawResponse: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.runId, {
+      status: args.status,
+      move: args.move,
+      shout: args.shout,
+      passed: args.passed,
+      error: args.error,
+      httpStatus: args.httpStatus,
+      rawResponse: args.rawResponse,
+      completedAt: Date.now(),
+    });
+  },
+});
+
+export const listUserTestRuns = query({
+  args: { token: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const runs = await ctx.db
+      .query("testRuns")
+      .withIndex("by_userId", (q) => q.eq("userId", userId as Id<"users">))
+      .order("desc")
+      .take(args.limit ?? 50);
+    return runs;
   },
 });

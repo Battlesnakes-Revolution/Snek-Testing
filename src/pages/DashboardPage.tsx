@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import TestEditor from "../components/TestEditor";
+import { useAsyncTestRun } from "../hooks/useAsyncTestRun";
 
 type Coordinate = { x: number; y: number };
 type Snake = {
@@ -53,13 +54,6 @@ type Test = {
   rejectionReason?: string;
 };
 
-type RunResult = {
-  ok: boolean;
-  move?: string | null;
-  shout?: string | null;
-  error?: string;
-  status?: number;
-};
 
 export default function DashboardPage() {
   const { user, token, logout } = useAuth();
@@ -67,8 +61,7 @@ export default function DashboardPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingTest, setEditingTest] = useState<Test | null>(null);
   const [botUrl, setBotUrl] = useState(() => localStorage.getItem("botUrl") ?? "");
-  const [results, setResults] = useState<Record<string, RunResult>>({});
-  const [runningIds, setRunningIds] = useState<Record<string, boolean>>({});
+  const { runTest, isRunning, getResult } = useAsyncTestRun(token);
 
   const myTests = useQuery(api.battlesnake.listMyTests, token ? { token } : "skip");
   const myCollections = useQuery(api.battlesnake.listCollections, token ? { token } : "skip");
@@ -81,7 +74,6 @@ export default function DashboardPage() {
   const addTestToCollection = useMutation(api.battlesnake.addTestToCollection);
   const removeTestFromCollection = useMutation(api.battlesnake.removeTestFromCollection);
   const regenerateSlug = useMutation(api.battlesnake.regenerateShareSlug);
-  const runTest = useAction(api.battlesnake.runTest);
 
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showNewCollection, setShowNewCollection] = useState(false);
@@ -138,13 +130,7 @@ export default function DashboardPage() {
   const handleRunTest = async (test: Test) => {
     if (!botUrl.trim()) return;
     localStorage.setItem("botUrl", botUrl);
-    setRunningIds((prev) => ({ ...prev, [test._id]: true }));
-    try {
-      const result = await runTest({ testId: test._id, url: botUrl });
-      setResults((prev) => ({ ...prev, [test._id]: result }));
-    } finally {
-      setRunningIds((prev) => ({ ...prev, [test._id]: false }));
-    }
+    await runTest(test._id, botUrl);
   };
 
   const handleCreateCollection = async () => {
@@ -285,8 +271,8 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {myTests.map((test) => {
-                  const result = results[test._id];
-                  const isRunning = runningIds[test._id];
+                  const result = getResult(test._id);
+                  const running = isRunning(test._id);
                   const passed = result?.ok && test.expectedSafeMoves.includes(result.move ?? "");
                   return (
                     <div key={test._id} className="bg-ink border border-sand/20 rounded-lg p-4">
@@ -298,10 +284,10 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleRunTest(test)}
-                            disabled={isRunning || !botUrl.trim()}
+                            disabled={running || !botUrl.trim()}
                             className="text-sm px-3 py-1 bg-lagoon text-ink rounded disabled:opacity-50"
                           >
-                            {isRunning ? "Running..." : "Run Test"}
+                            {running ? "Running..." : "Run Test"}
                           </button>
                           <button
                             onClick={() => { setEditingTest(test); setShowEditor(true); }}

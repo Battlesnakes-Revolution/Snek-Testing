@@ -53,6 +53,7 @@ export default defineSchema({
     isAdmin: v.boolean(),
     createdAt: v.number(),
     googleId: v.optional(v.string()),
+    googleName: v.optional(v.string()),
   })
     .index("by_emailLower", ["emailLower"])
     .index("by_username", ["username"])
@@ -117,4 +118,22 @@ export default defineSchema({
     attempts: v.number(),
     blockedUntil: v.optional(v.number()),
   }).index("by_clientId", ["clientId"]),
+
+  testRuns: defineTable({
+    testId: v.id("tests"),
+    userId: v.id("users"),
+    botUrl: v.string(),
+    status: v.union(v.literal("running"), v.literal("completed"), v.literal("failed")),
+    move: v.optional(v.string()),
+    shout: v.optional(v.string()),
+    passed: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+    httpStatus: v.optional(v.number()),
+    rawResponse: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_testId", ["testId"])
+    .index("by_status", ["status"]),
 });

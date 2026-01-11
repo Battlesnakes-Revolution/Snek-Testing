@@ -15,6 +15,7 @@ type Test = {
   youId: string;
   expectedSafeMoves: string[];
   status?: string;
+  submitterName?: string;
 };
 
 type Coordinate = { x: number; y: number };
@@ -224,6 +225,7 @@ export default function AdminPage() {
                     </div>
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
+                      {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
                     </p>
 
                     {expandedTest === test._id && (
@@ -291,6 +293,7 @@ export default function AdminPage() {
                     </div>
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
+                      {(test as Test & { submitterName?: string }).submitterName && <span className="ml-2 text-lagoon">| Submitted by: {(test as Test & { submitterName?: string }).submitterName}</span>}
                     </p>
 
                     {expandedTest === test._id && (
@@ -342,6 +345,7 @@ export default function AdminPage() {
                     </div>
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
+                      {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
                     </p>
 
                     {expandedTest === test._id && (
@@ -393,6 +397,7 @@ export default function AdminPage() {
                     </div>
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
+                      {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
                     </p>
 
                     {expandedTest === test._id && (

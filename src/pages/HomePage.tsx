@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useAction, useMutation } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "../contexts/AuthContext";
 import type { Id } from "../../convex/_generated/dataModel";
 import BoardPreview from "../components/BoardPreview";
+import { useAsyncTestRun } from "../hooks/useAsyncTestRun";
 
 type Coordinate = { x: number; y: number };
 type Snake = {
@@ -32,56 +33,34 @@ type Test = {
   expectedSafeMoves: string[];
 };
 
-type RunResult = {
-  ok: boolean;
-  move?: string | null;
-  error?: string;
-};
-
 export default function HomePage() {
   const { user, logout, token } = useAuth();
   const [botUrl, setBotUrl] = useState(() => localStorage.getItem("botUrl") ?? "");
-  const [results, setResults] = useState<Record<string, RunResult>>({});
-  const [runningIds, setRunningIds] = useState<Record<string, boolean>>({});
   const [expandedTest, setExpandedTest] = useState<Id<"tests"> | null>(null);
   const [addingToCollection, setAddingToCollection] = useState<Id<"tests"> | null>(null);
+  const { runTest, runAllTests, isRunning, getResult, runStates } = useAsyncTestRun(token);
 
   const publicTests = useQuery(api.battlesnake.listPublicTests);
   const collections = useQuery(
     api.battlesnake.listCollections,
     token ? { token } : "skip"
   );
-  const runTest = useAction(api.battlesnake.runTest);
   const addTestToCollection = useMutation(api.battlesnake.addTestToCollection);
 
   const handleRunTest = async (test: Test) => {
     if (!botUrl.trim()) return;
     localStorage.setItem("botUrl", botUrl);
-    setRunningIds((prev) => ({ ...prev, [test._id]: true }));
-    try {
-      const result = await runTest({ testId: test._id, url: botUrl });
-      setResults((prev) => ({ ...prev, [test._id]: result }));
-    } finally {
-      setRunningIds((prev) => ({ ...prev, [test._id]: false }));
-    }
+    await runTest(test._id, botUrl);
   };
 
   const handleRunAll = async () => {
     if (!botUrl.trim() || !publicTests) return;
     localStorage.setItem("botUrl", botUrl);
-    for (const test of publicTests) {
-      setRunningIds((prev) => ({ ...prev, [test._id]: true }));
-      try {
-        const result = await runTest({ testId: test._id, url: botUrl });
-        setResults((prev) => ({ ...prev, [test._id]: result }));
-      } finally {
-        setRunningIds((prev) => ({ ...prev, [test._id]: false }));
-      }
-    }
+    await runAllTests(publicTests as Array<{ _id: Id<"tests"> }>, botUrl);
   };
 
   const passCount = publicTests?.filter((t) => {
-    const r = results[t._id];
+    const r = getResult(t._id);
     return r?.ok && t.expectedSafeMoves.includes(r.move ?? "");
   }).length ?? 0;
 
@@ -138,7 +117,7 @@ export default function HomePage() {
               Run All Tests
             </button>
           </div>
-          {Object.keys(results).length > 0 && publicTests && (
+          {Object.keys(runStates).length > 0 && publicTests && (
             <p className="text-sand/60 text-sm mt-2">
               Results: {passCount}/{publicTests.length} passed
             </p>
@@ -161,8 +140,8 @@ export default function HomePage() {
         ) : (
           <div className="space-y-4">
             {publicTests.map((test) => {
-              const result = results[test._id];
-              const isRunning = runningIds[test._id];
+              const result = getResult(test._id);
+              const running = isRunning(test._id);
               const passed = result?.ok && test.expectedSafeMoves.includes(result.move ?? "");
               return (
                 <div key={test._id} className="bg-ink border border-sand/20 rounded-lg p-4">
@@ -185,10 +164,10 @@ export default function HomePage() {
                       )}
                       <button
                         onClick={() => handleRunTest(test)}
-                        disabled={isRunning || !botUrl.trim()}
+                        disabled={running || !botUrl.trim()}
                         className="text-sm px-3 py-1 bg-lagoon text-ink rounded disabled:opacity-50"
                       >
-                        {isRunning ? "Running..." : "Run"}
+                        {running ? "Running..." : "Run"}
                       </button>
                     </div>
                   </div>

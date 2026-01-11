@@ -31,13 +31,20 @@ The core data structures represent Battlesnake game state:
 - **Snake**: Contains id, name, health, body coordinates, head position, length, and optional metadata
 - **Board**: Dimensions, food positions, hazards, and array of snakes
 - **Game**: Optional game configuration including ruleset and timeout settings
-- **Tests Table**: Stores test scenarios with board state, expected safe moves, and snake identification
+- **Tests Table**: Stores test scenarios with board state, expected safe moves, snake identification, and submitter info (ownerId)
+- **TestRuns Table**: Tracks async test execution with status (running/completed/failed), results, and timing
 
 ### Security Features
-- User authentication via Google OAuth with server-side token verification (using google-auth-library)
+- User authentication via Google OAuth with server-side token verification (using jose library)
 - Legacy email/password login still supported for existing accounts, but new registrations disabled
 - Admin access controlled via `isAdmin` field in user document (set manually in Convex dashboard)
 - Rate limiting: 5 login attempts per 5-minute window
+- Internal mutations for sensitive operations (e.g., updateTestRunResult)
+
+### Test Execution
+- Tests run asynchronously via the useAsyncTestRun hook
+- Test runs are recorded in the testRuns table for tracking and history
+- Admin panel displays submitter's Google name for submitted tests
 
 ### Admin Setup
 To make a user an admin:

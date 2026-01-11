@@ -166,7 +166,7 @@ export const createGoogleSession = internalMutation({
         .first();
       
       if (user) {
-        await ctx.db.patch(user._id, { googleId: args.googleId });
+        await ctx.db.patch(user._id, { googleId: args.googleId, googleName: args.name });
       }
     }
 
@@ -183,9 +183,12 @@ export const createGoogleSession = internalMutation({
         isAdmin: false,
         createdAt: now,
         googleId: args.googleId,
+        googleName: args.name,
       });
       
       user = await ctx.db.get(userId);
+    } else {
+      await ctx.db.patch(user._id, { googleName: args.name });
     }
 
     if (!user) {
