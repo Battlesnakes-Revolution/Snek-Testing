@@ -133,6 +133,16 @@ export default function DashboardPage() {
     await runTest(test._id, botUrl);
   };
 
+  const handleRunAllTests = async () => {
+    if (!botUrl.trim() || !myTests?.length) return;
+    localStorage.setItem("botUrl", botUrl);
+    for (const test of myTests) {
+      await runTest(test._id, botUrl);
+    }
+  };
+
+  const anyTestRunning = myTests?.some((t) => isRunning(t._id)) ?? false;
+
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) return;
     await createCollection({ token, name: newCollectionName, isPublic: false });
@@ -245,12 +255,21 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl text-sand">My Tests</h2>
-              <button
-                onClick={() => setShowEditor(true)}
-                className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80"
-              >
-                Create New Test
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRunAllTests}
+                  disabled={anyTestRunning || !botUrl.trim() || !myTests?.length}
+                  className="bg-moss text-ink px-4 py-2 rounded hover:bg-moss/80 disabled:opacity-50"
+                >
+                  {anyTestRunning ? "Running..." : "Run All Tests"}
+                </button>
+                <button
+                  onClick={() => setShowEditor(true)}
+                  className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80"
+                >
+                  Create New Test
+                </button>
+              </div>
             </div>
 
             <div className="mb-4">
