@@ -1017,11 +1017,13 @@ export const executeTestRun = action({
     };
 
     try {
+      const fetchStart = Date.now();
       const response: Response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
+      const responseTimeMs = Date.now() - fetchStart;
       const responseText = await response.text();
       let data: unknown = null;
       if (responseText) {
@@ -1034,6 +1036,7 @@ export const executeTestRun = action({
             error: `Non-JSON response (${response.status}).`,
             httpStatus: response.status,
             rawResponse: responseText.slice(0, 1000),
+            responseTimeMs,
           });
           return { ok: false, error: `Non-JSON response (${response.status}).` };
         }
@@ -1045,6 +1048,7 @@ export const executeTestRun = action({
           error: `HTTP ${response.status}`,
           httpStatus: response.status,
           rawResponse: JSON.stringify(data).slice(0, 1000),
+          responseTimeMs,
         });
         return { ok: false, error: `HTTP ${response.status}` };
       }
@@ -1067,8 +1071,9 @@ export const executeTestRun = action({
         passed,
         httpStatus: response.status,
         rawResponse: JSON.stringify(data).slice(0, 1000),
+        responseTimeMs,
       });
-      return { ok: true, move, shout, passed };
+      return { ok: true, move, shout, passed, responseTimeMs };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Request failed.";
       await ctx.runMutation(internal.battlesnake.updateTestRunResult, {
@@ -1091,6 +1096,7 @@ export const updateTestRunResult = internalMutation({
     error: v.optional(v.string()),
     httpStatus: v.optional(v.number()),
     rawResponse: v.optional(v.string()),
+    responseTimeMs: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.runId, {
@@ -1101,6 +1107,7 @@ export const updateTestRunResult = internalMutation({
       error: args.error,
       httpStatus: args.httpStatus,
       rawResponse: args.rawResponse,
+      responseTimeMs: args.responseTimeMs,
       completedAt: Date.now(),
     });
   },

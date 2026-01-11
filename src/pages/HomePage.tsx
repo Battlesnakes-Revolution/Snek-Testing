@@ -207,7 +207,12 @@ export default function HomePage() {
                   {result && (
                     <div className={`mt-2 p-2 rounded text-sm ${passed ? "bg-moss/20 text-moss" : "bg-ember/20 text-ember"}`}>
                       {result.ok ? (
-                        <span>Move: {result.move} {passed ? "(PASS)" : "(FAIL)"}</span>
+                        <span>
+                          Move: {result.move} {passed ? "(PASS)" : "(FAIL)"}
+                          {result.responseTimeMs !== undefined && (
+                            <span className="ml-2 text-sand/60">| {result.responseTimeMs}ms</span>
+                          )}
+                        </span>
                       ) : (
                         <span>Error: {result.error}</span>
                       )}

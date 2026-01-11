@@ -130,6 +130,7 @@ export default defineSchema({
     error: v.optional(v.string()),
     httpStatus: v.optional(v.number()),
     rawResponse: v.optional(v.string()),
+    responseTimeMs: v.optional(v.number()),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
   })

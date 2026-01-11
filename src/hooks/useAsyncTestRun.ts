@@ -10,6 +10,7 @@ type RunResult = {
   passed?: boolean;
   error?: string;
   status?: number;
+  responseTimeMs?: number;
 };
 
 type TestRunState = {
@@ -60,6 +61,7 @@ export function useAsyncTestRun(token: string | null) {
                   move: result.move,
                   shout: result.shout,
                   passed: result.passed,
+                  responseTimeMs: result.responseTimeMs,
                 },
               },
             }));
