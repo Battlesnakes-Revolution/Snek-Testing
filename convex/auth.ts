@@ -178,7 +178,6 @@ export const createGoogleSession = internalMutation({
       const userId = await ctx.db.insert("users", {
         email: args.email.trim(),
         emailLower,
-        passwordHash: "",
         username,
         isAdmin: false,
         createdAt: now,
@@ -232,6 +231,11 @@ export const login = mutation({
     if (!user) {
       await recordFailedAttempt(ctx, args.clientId);
       return { ok: false, error: "Invalid email or password." };
+    }
+
+    if (!user.passwordHash) {
+      await recordFailedAttempt(ctx, args.clientId);
+      return { ok: false, error: "This account uses Google sign-in. Please sign in with Google." };
     }
 
     const valid = bcrypt.compareSync(args.password, user.passwordHash);

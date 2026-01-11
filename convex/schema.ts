@@ -48,7 +48,7 @@ export default defineSchema({
   users: defineTable({
     email: v.string(),
     emailLower: v.string(),
-    passwordHash: v.string(),
+    passwordHash: v.optional(v.string()),
     username: v.string(),
     isAdmin: v.boolean(),
     createdAt: v.number(),
