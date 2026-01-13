@@ -60,6 +60,22 @@ To make a user an admin:
 3. Find the user in the `users` table
 4. Set `isAdmin: true`
 
+### Super Admin Setup
+Super admins have elevated privileges beyond regular admins, including the ability to ban Google accounts.
+
+To make a user a super admin:
+1. Have them register a normal account
+2. Go to the Convex dashboard (https://dashboard.convex.dev)
+3. Find the user in the `users` table
+4. Set both `isAdmin: true` and `isSuperAdmin: true`
+
+### User Banning (Super Admin Only)
+- Super admins can ban Google accounts from the "User Management" tab in the admin panel
+- Banned users are immediately logged out and cannot sign in again
+- The `bannedGoogleAccounts` table tracks all banned accounts with reason and who banned them
+- Super admins can also unban accounts from the same interface
+- Super admins cannot ban other super admins
+
 ## External Dependencies
 
 ### Core Services
