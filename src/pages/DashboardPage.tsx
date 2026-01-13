@@ -45,6 +45,7 @@ type Game = {
 type Test = {
   _id: Id<"tests">;
   name: string;
+  description?: string;
   board: Board;
   game?: Game;
   turn: number;
@@ -342,6 +343,9 @@ export default function DashboardPage() {
                           </button>
                         </div>
                       </div>
+                      {test.description && (
+                        <p className="text-sand/70 text-sm mb-1">{test.description}</p>
+                      )}
                       <p className="text-sand/60 text-sm">
                         Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}
                       </p>

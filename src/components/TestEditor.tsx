@@ -40,6 +40,7 @@ type Game = {
 type TestData = {
   _id?: Id<"tests">;
   name: string;
+  description?: string;
   board: Board;
   game?: Game;
   turn: number;
@@ -73,6 +74,7 @@ function makeDefaultSnake(id: string, name: string, x: number): Snake {
 
 export default function TestEditor({ initialData, onSave, onCancel }: Props) {
   const [name, setName] = useState(initialData?.name ?? "");
+  const [description, setDescription] = useState(initialData?.description ?? "");
   const [turn, setTurn] = useState(initialData?.turn ?? 0);
   const [boardWidth, setBoardWidth] = useState(initialData?.board?.width ?? 11);
   const [boardHeight, setBoardHeight] = useState(initialData?.board?.height ?? 11);
@@ -192,6 +194,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
     }
     onSave({
       name,
+      description: description || undefined,
       board: {
         width: boardWidth,
         height: boardHeight,
@@ -299,6 +302,17 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon"
               placeholder="e.g., Avoid Wall Collision"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sand/80 text-sm mb-1">Description (optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-night border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon resize-none"
+              placeholder="Describe what this test is checking..."
+              rows={2}
             />
           </div>
 

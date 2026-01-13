@@ -70,6 +70,7 @@ export default defineSchema({
 
   tests: defineTable({
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),

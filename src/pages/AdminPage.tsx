@@ -10,6 +10,7 @@ import TestEditor from "../components/TestEditor";
 type Test = {
   _id: Id<"tests">;
   name: string;
+  description?: string;
   board: Board;
   turn: number;
   youId: string;
@@ -238,6 +239,9 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                    {test.description && (
+                      <p className="text-sand/70 text-sm mb-2">{test.description}</p>
+                    )}
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
@@ -313,6 +317,9 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                    {test.description && (
+                      <p className="text-sand/70 text-sm mb-2">{test.description}</p>
+                    )}
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {(test as Test & { submitterName?: string }).submitterName && <span className="ml-2 text-lagoon">| Submitted by: {(test as Test & { submitterName?: string }).submitterName}</span>}
@@ -372,6 +379,9 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                    {test.description && (
+                      <p className="text-sand/70 text-sm mb-2">{test.description}</p>
+                    )}
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
@@ -427,6 +437,9 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                    {test.description && (
+                      <p className="text-sand/70 text-sm mb-2">{test.description}</p>
+                    )}
                     <p className="text-sand/60 text-sm mb-2">
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}

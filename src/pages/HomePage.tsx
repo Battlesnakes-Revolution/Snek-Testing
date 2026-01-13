@@ -27,6 +27,7 @@ type Board = {
 type Test = {
   _id: Id<"tests">;
   name: string;
+  description?: string;
   board: Board;
   turn: number;
   youId: string;
@@ -171,6 +172,9 @@ export default function HomePage() {
                       </button>
                     </div>
                   </div>
+                  {test.description && (
+                    <p className="text-sand/70 text-sm mb-2">{test.description}</p>
+                  )}
                   <p className="text-sand/60 text-sm">
                     Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}
                   </p>

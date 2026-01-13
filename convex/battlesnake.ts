@@ -120,6 +120,7 @@ export const createTest = mutation({
   args: {
     adminToken: v.string(),
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),
@@ -137,6 +138,7 @@ export const createTest = mutation({
     const createdAt = Date.now();
     const id = await ctx.db.insert("tests", {
       name: args.name,
+      description: args.description,
       board: args.board,
       game: args.game,
       turn: args.turn,
@@ -153,6 +155,7 @@ export const updateTest = mutation({
     adminToken: v.string(),
     id: v.id("tests"),
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),
@@ -169,6 +172,7 @@ export const updateTest = mutation({
     }
     await ctx.db.patch(args.id, {
       name: args.name,
+      description: args.description,
       board: args.board,
       game: args.game,
       turn: args.turn,
@@ -456,6 +460,7 @@ export const createUserTest = mutation({
   args: {
     token: v.string(),
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),
@@ -473,6 +478,7 @@ export const createUserTest = mutation({
     const createdAt = Date.now();
     const id = await ctx.db.insert("tests", {
       name: args.name,
+      description: args.description,
       board: args.board,
       game: args.game,
       turn: args.turn,
@@ -491,6 +497,7 @@ export const updateUserTest = mutation({
     token: v.string(),
     id: v.id("tests"),
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),
@@ -514,6 +521,7 @@ export const updateUserTest = mutation({
     }
     await ctx.db.patch(args.id, {
       name: args.name,
+      description: args.description,
       board: args.board,
       game: args.game,
       turn: args.turn,
@@ -530,6 +538,7 @@ export const adminUpdateTest = mutation({
     token: v.string(),
     id: v.id("tests"),
     name: v.string(),
+    description: v.optional(v.string()),
     board,
     game,
     turn: v.number(),
@@ -553,6 +562,7 @@ export const adminUpdateTest = mutation({
     }
     await ctx.db.patch(args.id, {
       name: args.name,
+      description: args.description,
       board: args.board,
       game: args.game,
       turn: args.turn,
