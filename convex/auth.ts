@@ -480,6 +480,39 @@ export const listAllUsers = query({
       isAdmin: user.isAdmin,
       isSuperAdmin: user.isSuperAdmin ?? false,
       createdAt: user.createdAt,
+      bannedFromPendingTests: user.bannedFromPendingTests ?? false,
+      bannedFromPublicCollections: user.bannedFromPublicCollections ?? false,
     }));
+  },
+});
+
+export const toggleUserRestriction = mutation({
+  args: {
+    token: v.string(),
+    targetUserId: v.id("users"),
+    restriction: v.union(v.literal("pendingTests"), v.literal("publicCollections")),
+  },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+
+    const targetUser = await ctx.db.get(args.targetUserId);
+    if (!targetUser) {
+      return { ok: false, error: "User not found." };
+    }
+    if (targetUser.isSuperAdmin) {
+      return { ok: false, error: "Cannot restrict a super admin." };
+    }
+
+    if (args.restriction === "pendingTests") {
+      await ctx.db.patch(args.targetUserId, {
+        bannedFromPendingTests: !targetUser.bannedFromPendingTests,
+      });
+    } else {
+      await ctx.db.patch(args.targetUserId, {
+        bannedFromPublicCollections: !targetUser.bannedFromPublicCollections,
+      });
+    }
+
+    return { ok: true };
   },
 });

@@ -55,6 +55,8 @@ export default defineSchema({
     createdAt: v.number(),
     googleId: v.optional(v.string()),
     googleName: v.optional(v.string()),
+    bannedFromPendingTests: v.optional(v.boolean()),
+    bannedFromPublicCollections: v.optional(v.boolean()),
   })
     .index("by_emailLower", ["emailLower"])
     .index("by_username", ["username"])

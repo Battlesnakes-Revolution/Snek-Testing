@@ -26,6 +26,8 @@ type UserRecord = {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   createdAt: number;
+  bannedFromPendingTests: boolean;
+  bannedFromPublicCollections: boolean;
 };
 
 type Test = {
@@ -102,6 +104,7 @@ export default function AdminPage() {
   const bannedAccounts = useQuery(api.auth.listBannedAccounts, token && user?.isSuperAdmin ? { token } : "skip") as BannedAccount[] | undefined;
   const banGoogleAccount = useMutation(api.auth.banGoogleAccount);
   const unbanGoogleAccount = useMutation(api.auth.unbanGoogleAccount);
+  const toggleUserRestriction = useMutation(api.auth.toggleUserRestriction);
 
   const handleMakePrivate = async (id: Id<"tests">) => {
     if (!token) return;
@@ -187,6 +190,14 @@ export default function AdminPage() {
         delete newState[userId];
         return newState;
       });
+    }
+  };
+
+  const handleToggleRestriction = async (userId: Id<"users">, restriction: "pendingTests" | "publicCollections") => {
+    if (!token) return;
+    const result = await toggleUserRestriction({ token, targetUserId: userId, restriction });
+    if (!result.ok) {
+      alert(result.error);
     }
   };
 
@@ -586,7 +597,7 @@ export default function AdminPage() {
                       <div key={u._id} className={`bg-ink border rounded-lg p-3 ${isBanned ? "border-ember/50" : "border-sand/20"}`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-sand font-medium">{u.username}</p>
                               {u.isSuperAdmin && (
                                 <span className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400">Super Admin</span>
@@ -597,30 +608,56 @@ export default function AdminPage() {
                               {isBanned && (
                                 <span className="px-2 py-0.5 text-xs rounded bg-ember/20 text-ember">Banned</span>
                               )}
+                              {u.bannedFromPendingTests && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-orange-500/20 text-orange-400">No Pending Tests</span>
+                              )}
+                              {u.bannedFromPublicCollections && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-400">No Public Collections</span>
+                              )}
                             </div>
                             <p className="text-sand/60 text-sm">{u.email}</p>
                             {u.googleName && <p className="text-sand/40 text-sm">Google: {u.googleName}</p>}
                           </div>
-                          {!u.isSuperAdmin && u.googleId && !isBanned && (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={banReason[u._id] ?? ""}
-                                onChange={(e) => setBanReason({ ...banReason, [u._id]: e.target.value })}
-                                placeholder="Reason (optional)"
-                                className="w-40 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm focus:outline-none focus:border-lagoon"
-                              />
-                              <button
-                                onClick={() => handleBanUser(u._id)}
-                                className="text-sm px-3 py-1 bg-ember text-ink rounded hover:bg-ember/80"
-                              >
-                                Ban
-                              </button>
-                            </div>
-                          )}
-                          {!u.googleId && (
-                            <span className="text-sand/40 text-sm">No Google account</span>
-                          )}
+                          <div className="flex flex-col gap-2 items-end">
+                            {!u.isSuperAdmin && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleRestriction(u._id, "pendingTests")}
+                                  className={`text-xs px-2 py-1 rounded ${u.bannedFromPendingTests ? "bg-orange-500/30 text-orange-300 hover:bg-orange-500/50" : "bg-sand/10 text-sand/60 hover:bg-sand/20"}`}
+                                  title={u.bannedFromPendingTests ? "Allow submitting pending tests" : "Ban from submitting pending tests"}
+                                >
+                                  {u.bannedFromPendingTests ? "Allow Pending" : "Ban Pending"}
+                                </button>
+                                <button
+                                  onClick={() => handleToggleRestriction(u._id, "publicCollections")}
+                                  className={`text-xs px-2 py-1 rounded ${u.bannedFromPublicCollections ? "bg-yellow-500/30 text-yellow-300 hover:bg-yellow-500/50" : "bg-sand/10 text-sand/60 hover:bg-sand/20"}`}
+                                  title={u.bannedFromPublicCollections ? "Allow public collections" : "Ban from public collections"}
+                                >
+                                  {u.bannedFromPublicCollections ? "Allow Public" : "Ban Public"}
+                                </button>
+                              </div>
+                            )}
+                            {!u.isSuperAdmin && u.googleId && !isBanned && (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={banReason[u._id] ?? ""}
+                                  onChange={(e) => setBanReason({ ...banReason, [u._id]: e.target.value })}
+                                  placeholder="Reason (optional)"
+                                  className="w-40 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm focus:outline-none focus:border-lagoon"
+                                />
+                                <button
+                                  onClick={() => handleBanUser(u._id)}
+                                  className="text-sm px-3 py-1 bg-ember text-ink rounded hover:bg-ember/80"
+                                >
+                                  Ban
+                                </button>
+                              </div>
+                            )}
+                            {!u.googleId && (
+                              <span className="text-sand/40 text-sm">No Google account</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

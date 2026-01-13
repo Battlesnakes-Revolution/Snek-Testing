@@ -470,6 +470,10 @@ export const createUserTest = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await requireUserSession(ctx, args.token);
+    const user = await ctx.db.get(userId as Id<"users">);
+    if (!args.makePrivate && user?.bannedFromPendingTests) {
+      throw new Error("You are not allowed to submit tests for public review. You can still save tests as private.");
+    }
     const youExists = args.board.snakes.some((snakeItem) => {
       return snakeItem.id === args.youId;
     });
@@ -766,6 +770,12 @@ export const createCollection = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await requireUserSession(ctx, args.token);
+    if (args.isPublic) {
+      const user = await ctx.db.get(userId as Id<"users">);
+      if (user?.bannedFromPublicCollections) {
+        throw new Error("You are not allowed to create public collections.");
+      }
+    }
     const now = Date.now();
     const shareSlug = generateSlug();
     const id = await ctx.db.insert("collections", {
@@ -797,6 +807,12 @@ export const updateCollection = mutation({
     }
     if (collection.ownerId !== userId) {
       throw new Error("You don't have permission to edit this collection.");
+    }
+    if (args.isPublic && !collection.isPublic) {
+      const user = await ctx.db.get(userId as Id<"users">);
+      if (user?.bannedFromPublicCollections) {
+        throw new Error("You are not allowed to make collections public.");
+      }
     }
     await ctx.db.patch(args.id, {
       name: args.name,
