@@ -18,6 +18,7 @@ const snake = v.object({
   shout: v.optional(v.string()),
   squad: v.optional(v.string()),
   headEmoji: v.optional(v.string()),
+  color: v.optional(v.string()),
 });
 const board = v.object({
   height: v.number(),
