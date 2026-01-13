@@ -10,6 +10,7 @@ type Snake = {
   length: number;
   squad?: string;
   headEmoji?: string;
+  color?: string;
 };
 type Board = {
   height: number;
@@ -31,7 +32,10 @@ const YOU_SNAKE_COLOR = "#43b047";
 function getSnakeColor(snakes: Snake[], snakeIndex: number, youId: string): string {
   const snake = snakes[snakeIndex];
   if (snake.id === youId) {
-    return YOU_SNAKE_COLOR;
+    return snake.color || YOU_SNAKE_COLOR;
+  }
+  if (snake.color) {
+    return snake.color;
   }
   if (snake.squad) {
     const firstWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
