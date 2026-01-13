@@ -102,18 +102,21 @@ export default function DashboardPage() {
     turn: number;
     youId: string;
     expectedSafeMoves: string[];
+    makePrivate?: boolean;
   }) => {
     try {
+      const { makePrivate, ...testData } = data;
       if (editingTest) {
         await updateTest({
           token,
           id: editingTest._id,
-          ...data,
+          ...testData,
         });
       } else {
         await createTest({
           token,
-          ...data,
+          ...testData,
+          makePrivate,
         });
       }
       setShowEditor(false);
@@ -224,6 +227,7 @@ export default function DashboardPage() {
             initialData={editingTest}
             onSave={handleSaveTest}
             onCancel={() => { setShowEditor(false); setEditingTest(null); }}
+            showMakePrivate={!editingTest}
           />
         </div>
       </div>

@@ -466,6 +466,7 @@ export const createUserTest = mutation({
     turn: v.number(),
     youId: v.string(),
     expectedSafeMoves: v.array(v.string()),
+    makePrivate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireUserSession(ctx, args.token);
@@ -486,7 +487,7 @@ export const createUserTest = mutation({
       expectedSafeMoves: args.expectedSafeMoves,
       createdAt,
       ownerId: userId as Id<"users">,
-      status: "pending",
+      status: args.makePrivate ? "private" : "pending",
     });
     return await ctx.db.get(id);
   },

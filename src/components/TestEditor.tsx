@@ -46,12 +46,14 @@ type TestData = {
   turn: number;
   youId: string;
   expectedSafeMoves: string[];
+  makePrivate?: boolean;
 };
 
 type Props = {
   initialData?: TestData | null;
   onSave: (data: Omit<TestData, "_id">) => void;
   onCancel: () => void;
+  showMakePrivate?: boolean;
 };
 
 const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
@@ -72,7 +74,7 @@ function makeDefaultSnake(id: string, name: string, x: number): Snake {
   };
 }
 
-export default function TestEditor({ initialData, onSave, onCancel }: Props) {
+export default function TestEditor({ initialData, onSave, onCancel, showMakePrivate }: Props) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [turn, setTurn] = useState(initialData?.turn ?? 0);
@@ -89,6 +91,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
   );
   const [tool, setTool] = useState<"food" | "hazard" | "snake-head" | "snake-body" | "eraser">("food");
   const [selectedSnakeIndex, setSelectedSnakeIndex] = useState(0);
+  const [makePrivate, setMakePrivate] = useState(false);
 
   const handleCellClick = (x: number, y: number) => {
     if (tool === "food") {
@@ -205,6 +208,7 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
       turn,
       youId,
       expectedSafeMoves,
+      makePrivate: showMakePrivate ? makePrivate : undefined,
     });
   };
 
@@ -478,7 +482,18 @@ export default function TestEditor({ initialData, onSave, onCancel }: Props) {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {showMakePrivate && (
+              <label className="flex items-center gap-2 text-sand/80 mr-4">
+                <input
+                  type="checkbox"
+                  checked={makePrivate}
+                  onChange={(e) => setMakePrivate(e.target.checked)}
+                  className="w-4 h-4 rounded border-sand/20 bg-night text-lagoon focus:ring-lagoon"
+                />
+                <span className="text-sm">Save as private</span>
+              </label>
+            )}
             <button
               onClick={handleSubmit}
               className="bg-lagoon text-ink px-4 py-2 rounded hover:bg-lagoon/80"
