@@ -88,6 +88,8 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "public" | "rejected" | "private" | "users">("pending");
   const [editingTest, setEditingTest] = useState<Test | null>(null);
   const [banReason, setBanReason] = useState<Record<string, string>>({});
+  const [editingRejectionReason, setEditingRejectionReason] = useState<Id<"tests"> | null>(null);
+  const [editedRejectionReason, setEditedRejectionReason] = useState<string>("");
   const [userSearch, setUserSearch] = useState("");
 
   const pendingTests = useQuery(api.battlesnake.listPendingTests, token ? { token } : "skip");
@@ -99,6 +101,7 @@ export default function AdminPage() {
   const permaRejectTest = useMutation(api.battlesnake.permaRejectTest);
   const makeTestPrivate = useMutation(api.battlesnake.makeTestPrivate);
   const adminUpdateTest = useMutation(api.battlesnake.adminUpdateTest);
+  const updateRejectionReason = useMutation(api.battlesnake.updateRejectionReason);
 
   const allUsers = useQuery(api.auth.listAllUsers, token && user?.isSuperAdmin ? { token } : "skip") as UserRecord[] | undefined;
   const bannedAccounts = useQuery(api.auth.listBannedAccounts, token && user?.isSuperAdmin ? { token } : "skip") as BannedAccount[] | undefined;
@@ -471,8 +474,50 @@ export default function AdminPage() {
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
                     </p>
-                    {test.rejectionReason && (
-                      <p className="text-ember text-sm mb-2">Reason: {test.rejectionReason}</p>
+                    {editingRejectionReason === test._id ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={editedRejectionReason}
+                          onChange={(e) => setEditedRejectionReason(e.target.value)}
+                          placeholder="Rejection reason"
+                          className="flex-1 bg-night border border-sand/20 rounded px-3 py-1 text-sand text-sm focus:outline-none focus:border-lagoon"
+                        />
+                        <button
+                          onClick={async () => {
+                            await updateRejectionReason({ token, id: test._id, reason: editedRejectionReason || undefined });
+                            setEditingRejectionReason(null);
+                            setEditedRejectionReason("");
+                          }}
+                          className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingRejectionReason(null);
+                            setEditedRejectionReason("");
+                          }}
+                          className="text-sm px-3 py-1 bg-sand/10 text-sand rounded hover:bg-sand/20"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-ember text-sm">
+                          Reason: {test.rejectionReason || <span className="text-sand/40 italic">No reason provided</span>}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setEditingRejectionReason(test._id);
+                            setEditedRejectionReason(test.rejectionReason || "");
+                          }}
+                          className="text-xs px-2 py-0.5 bg-sand/10 text-sand rounded hover:bg-sand/20"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     )}
 
                     {expandedTest === test._id && (

@@ -655,6 +655,24 @@ export const permaRejectTest = mutation({
   },
 });
 
+export const updateRejectionReason = mutation({
+  args: { token: v.string(), id: v.id("tests"), reason: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    if (test.status !== "rejected") {
+      throw new Error("Can only update rejection reason for rejected tests.");
+    }
+    await ctx.db.patch(args.id, {
+      rejectionReason: args.reason,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const resubmitTest = mutation({
   args: { token: v.string(), id: v.id("tests") },
   handler: async (ctx, args) => {
