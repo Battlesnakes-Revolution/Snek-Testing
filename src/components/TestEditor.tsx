@@ -13,6 +13,7 @@ type Snake = {
   shout?: string;
   squad?: string;
   headEmoji?: string;
+  color?: string;
 };
 type Board = {
   height: number;
@@ -214,6 +215,9 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
 
   const getSnakeColor = (snakeIndex: number) => {
     const snake = snakes[snakeIndex];
+    if (snake.color) {
+      return snake.color;
+    }
     if (snake.squad) {
       const firstSnakeWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
       return SNAKE_COLORS[firstSnakeWithSameSquad % SNAKE_COLORS.length];
@@ -431,6 +435,33 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
                       placeholder="Optional"
                       className="w-20 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
                     />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-sand/60 text-xs">Color:</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {SNAKE_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => {
+                            const newSnakes = [...snakes];
+                            newSnakes[i] = { ...snake, color };
+                            setSnakes(newSnakes);
+                          }}
+                          className={`w-6 h-6 rounded border-2 ${snake.color === color ? "border-white" : "border-transparent"}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <button
+                        onClick={() => {
+                          const newSnakes = [...snakes];
+                          newSnakes[i] = { ...snake, color: undefined };
+                          setSnakes(newSnakes);
+                        }}
+                        className={`w-6 h-6 rounded text-xs flex items-center justify-center ${!snake.color ? "bg-lagoon text-ink" : "bg-sand/10 text-sand"}`}
+                      >
+                        Auto
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <label className="text-sand/60 text-xs">Head Emoji:</label>
