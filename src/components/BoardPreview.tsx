@@ -52,6 +52,7 @@ function getCellContent(board: Board, x: number, y: number, youId: string) {
         isYou,
         label,
         headEmoji: snake.headEmoji,
+        squad: snake.squad,
         prevSegment,
         nextSegment,
       };
@@ -169,12 +170,22 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                 <span style={{ fontSize: `${Math.max(10, cellSize * 0.6)}px` }}>❕</span>
               )}
               {content?.type === "head" && (
-                <span
-                  className="font-bold text-white drop-shadow-sm z-10"
-                  style={{ fontSize: `${Math.max(8, cellSize * 0.5)}px` }}
-                >
-                  {content.isYou ? "Y" : (content.headEmoji || content.label)}
-                </span>
+                <div className="flex flex-col items-center justify-center z-10">
+                  <span
+                    className="font-bold text-white drop-shadow-sm"
+                    style={{ fontSize: `${Math.max(8, cellSize * 0.5)}px`, lineHeight: 1 }}
+                  >
+                    {content.isYou ? "Y" : (content.headEmoji || content.label)}
+                  </span>
+                  {content.squad && (
+                    <span
+                      className="text-white/90 font-medium drop-shadow-sm truncate max-w-full"
+                      style={{ fontSize: `${Math.max(6, cellSize * 0.3)}px`, lineHeight: 1 }}
+                    >
+                      {content.squad}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           );
