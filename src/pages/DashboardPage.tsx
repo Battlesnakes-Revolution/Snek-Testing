@@ -329,12 +329,14 @@ export default function DashboardPage() {
                           >
                             {running ? "Running..." : "Run Test"}
                           </button>
-                          <button
-                            onClick={() => { setEditingTest(test); setShowEditor(true); }}
-                            className="text-sm px-3 py-1 bg-sand/10 text-sand rounded hover:bg-sand/20"
-                          >
-                            Edit
-                          </button>
+                          {!test.permaRejected && (
+                            <button
+                              onClick={() => { setEditingTest(test); setShowEditor(true); }}
+                              className="text-sm px-3 py-1 bg-sand/10 text-sand rounded hover:bg-sand/20"
+                            >
+                              Edit
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteTest(test._id)}
                             className="text-sm px-3 py-1 bg-ember/20 text-ember rounded hover:bg-ember/30"

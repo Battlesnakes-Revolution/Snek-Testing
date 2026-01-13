@@ -513,6 +513,9 @@ export const updateUserTest = mutation({
     if (test.ownerId !== userId) {
       throw new Error("You don't have permission to edit this test.");
     }
+    if (test.permaRejected) {
+      throw new Error("This test has been permanently rejected and cannot be edited.");
+    }
     const youExists = args.board.snakes.some((snakeItem) => {
       return snakeItem.id === args.youId;
     });
