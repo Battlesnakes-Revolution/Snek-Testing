@@ -46,6 +46,13 @@ The core data structures represent Battlesnake game state:
 - Test runs are recorded in the testRuns table for tracking and history
 - Admin panel displays submitter's Google name for submitted tests
 
+### Test Submission Workflow
+- Users submit tests which start with "pending" status
+- Admins can approve, reject, or perma-reject tests from the admin panel
+- **Rejected tests**: Users can resubmit these to pending status
+- **Perma-rejected tests**: Cannot be resubmitted; admin uses this for tests that should never be approved
+- The `permaRejected` field on tests table tracks permanent rejection status
+
 ### Admin Setup
 To make a user an admin:
 1. Have them register a normal account
