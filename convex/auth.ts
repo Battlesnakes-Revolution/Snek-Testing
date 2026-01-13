@@ -152,6 +152,15 @@ export const createGoogleSession = internalMutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    const ban = await ctx.db
+      .query("bannedGoogleAccounts")
+      .withIndex("by_googleId", (q) => q.eq("googleId", args.googleId))
+      .first();
+
+    if (ban) {
+      return { ok: false, error: "This Google account has been banned." };
+    }
+
     const emailLower = args.email.toLowerCase().trim();
     
     let user = await ctx.db
@@ -295,7 +304,7 @@ export const getCurrentUser = query({
     if (!user) {
       return null;
     }
-    return { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin };
+    return { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin ?? false };
   },
 });
 
@@ -330,3 +339,147 @@ export async function requireAdmin(
   }
   return { userId };
 }
+
+export async function requireSuperAdmin(
+  ctx: { db: QueryCtx["db"] },
+  token: string
+): Promise<{ userId: string }> {
+  const session = await ctx.db
+    .query("userSessions")
+    .withIndex("by_token", (q) => q.eq("token", token))
+    .first();
+  if (!session) {
+    throw new Error("Session invalid. Please log in again.");
+  }
+  if (session.expiresAt < Date.now()) {
+    throw new Error("Session expired. Please log in again.");
+  }
+  const user = await ctx.db.get(session.userId);
+  if (!user) {
+    throw new Error("User not found. Please log in again.");
+  }
+  if (!user.isSuperAdmin) {
+    throw new Error("Super admin access required.");
+  }
+  return { userId: user._id };
+}
+
+export const banGoogleAccount = mutation({
+  args: {
+    token: v.string(),
+    targetUserId: v.id("users"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId: adminId } = await requireSuperAdmin(ctx, args.token);
+
+    const targetUser = await ctx.db.get(args.targetUserId);
+    if (!targetUser) {
+      return { ok: false, error: "User not found." };
+    }
+    if (!targetUser.googleId) {
+      return { ok: false, error: "User does not have a Google account linked." };
+    }
+    if (targetUser.isSuperAdmin) {
+      return { ok: false, error: "Cannot ban a super admin." };
+    }
+
+    const existingBan = await ctx.db
+      .query("bannedGoogleAccounts")
+      .withIndex("by_googleId", (q) => q.eq("googleId", targetUser.googleId!))
+      .first();
+
+    if (existingBan) {
+      return { ok: false, error: "This Google account is already banned." };
+    }
+
+    await ctx.db.insert("bannedGoogleAccounts", {
+      googleId: targetUser.googleId,
+      googleEmail: targetUser.email,
+      googleName: targetUser.googleName,
+      reason: args.reason,
+      bannedBy: adminId as any,
+      bannedAt: Date.now(),
+    });
+
+    const userSessions = await ctx.db
+      .query("userSessions")
+      .withIndex("by_userId", (q) => q.eq("userId", args.targetUserId))
+      .collect();
+    for (const session of userSessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    return { ok: true };
+  },
+});
+
+export const unbanGoogleAccount = mutation({
+  args: {
+    token: v.string(),
+    googleId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+
+    const ban = await ctx.db
+      .query("bannedGoogleAccounts")
+      .withIndex("by_googleId", (q) => q.eq("googleId", args.googleId))
+      .first();
+
+    if (!ban) {
+      return { ok: false, error: "This Google account is not banned." };
+    }
+
+    await ctx.db.delete(ban._id);
+    return { ok: true };
+  },
+});
+
+export const listBannedAccounts = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+
+    const bans = await ctx.db
+      .query("bannedGoogleAccounts")
+      .withIndex("by_bannedAt")
+      .order("desc")
+      .collect();
+
+    const bansWithAdmin = await Promise.all(
+      bans.map(async (ban) => {
+        const admin = await ctx.db.get(ban.bannedBy);
+        return {
+          ...ban,
+          bannedByUsername: admin?.username ?? "Unknown",
+        };
+      })
+    );
+
+    return bansWithAdmin;
+  },
+});
+
+export const listAllUsers = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.token);
+
+    const users = await ctx.db
+      .query("users")
+      .order("desc")
+      .collect();
+
+    return users.map((user) => ({
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      googleId: user.googleId,
+      googleName: user.googleName,
+      isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin ?? false,
+      createdAt: user.createdAt,
+    }));
+  },
+});

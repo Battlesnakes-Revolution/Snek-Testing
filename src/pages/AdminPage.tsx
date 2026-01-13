@@ -7,6 +7,27 @@ import type { Id } from "../../convex/_generated/dataModel";
 import BoardPreview from "../components/BoardPreview";
 import TestEditor from "../components/TestEditor";
 
+type BannedAccount = {
+  _id: Id<"bannedGoogleAccounts">;
+  googleId: string;
+  googleEmail: string;
+  googleName?: string;
+  reason?: string;
+  bannedAt: number;
+  bannedByUsername: string;
+};
+
+type UserRecord = {
+  _id: Id<"users">;
+  email: string;
+  username: string;
+  googleId?: string;
+  googleName?: string;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  createdAt: number;
+};
+
 type Test = {
   _id: Id<"tests">;
   name: string;
@@ -62,8 +83,10 @@ export default function AdminPage() {
   const { user, token, logout } = useAuth();
   const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
   const [expandedTest, setExpandedTest] = useState<Id<"tests"> | null>(null);
-  const [activeTab, setActiveTab] = useState<"pending" | "public" | "rejected" | "private">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "public" | "rejected" | "private" | "users">("pending");
   const [editingTest, setEditingTest] = useState<Test | null>(null);
+  const [banReason, setBanReason] = useState<Record<string, string>>({});
+  const [userSearch, setUserSearch] = useState("");
 
   const pendingTests = useQuery(api.battlesnake.listPendingTests, token ? { token } : "skip");
   const publicTests = useQuery(api.battlesnake.listPublicTests);
@@ -74,6 +97,11 @@ export default function AdminPage() {
   const permaRejectTest = useMutation(api.battlesnake.permaRejectTest);
   const makeTestPrivate = useMutation(api.battlesnake.makeTestPrivate);
   const adminUpdateTest = useMutation(api.battlesnake.adminUpdateTest);
+
+  const allUsers = useQuery(api.auth.listAllUsers, token && user?.isSuperAdmin ? { token } : "skip") as UserRecord[] | undefined;
+  const bannedAccounts = useQuery(api.auth.listBannedAccounts, token && user?.isSuperAdmin ? { token } : "skip") as BannedAccount[] | undefined;
+  const banGoogleAccount = useMutation(api.auth.banGoogleAccount);
+  const unbanGoogleAccount = useMutation(api.auth.unbanGoogleAccount);
 
   const handleMakePrivate = async (id: Id<"tests">) => {
     if (!token) return;
@@ -145,6 +173,44 @@ export default function AdminPage() {
     });
   };
 
+  const handleBanUser = async (userId: Id<"users">) => {
+    if (!token) return;
+    if (!confirm("Are you sure you want to ban this user's Google account? They will be logged out immediately and unable to sign in.")) {
+      return;
+    }
+    const result = await banGoogleAccount({ token, targetUserId: userId, reason: banReason[userId] || undefined });
+    if (!result.ok) {
+      alert(result.error);
+    } else {
+      setBanReason((prev) => {
+        const newState = { ...prev };
+        delete newState[userId];
+        return newState;
+      });
+    }
+  };
+
+  const handleUnbanAccount = async (googleId: string) => {
+    if (!token) return;
+    if (!confirm("Are you sure you want to unban this Google account?")) {
+      return;
+    }
+    const result = await unbanGoogleAccount({ token, googleId });
+    if (!result.ok) {
+      alert(result.error);
+    }
+  };
+
+  const bannedGoogleIds = new Set(bannedAccounts?.map((b) => b.googleId) ?? []);
+  const filteredUsers = allUsers?.filter((u) => {
+    const search = userSearch.toLowerCase();
+    return (
+      u.email.toLowerCase().includes(search) ||
+      u.username.toLowerCase().includes(search) ||
+      (u.googleName?.toLowerCase().includes(search) ?? false)
+    );
+  });
+
   if (editingTest) {
     return (
       <div className="min-h-screen bg-night p-4">
@@ -202,6 +268,14 @@ export default function AdminPage() {
           >
             Private ({privateTests?.length ?? 0})
           </button>
+          {user?.isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`px-4 py-2 rounded ${activeTab === "users" ? "bg-purple-500 text-ink" : "bg-sand/10 text-sand"}`}
+            >
+              User Management
+            </button>
+          )}
         </div>
 
         {activeTab === "pending" && (
@@ -454,6 +528,106 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "users" && user?.isSuperAdmin && (
+          <div>
+            <h2 className="text-xl text-sand mb-4">User Management (Super Admin)</h2>
+            
+            <div className="mb-6">
+              <h3 className="text-lg text-sand mb-3">Banned Google Accounts</h3>
+              {bannedAccounts === undefined ? (
+                <p className="text-sand/60">Loading...</p>
+              ) : bannedAccounts.length === 0 ? (
+                <p className="text-sand/60">No banned accounts.</p>
+              ) : (
+                <div className="space-y-2">
+                  {bannedAccounts.map((ban) => (
+                    <div key={ban._id} className="bg-ink border border-ember/30 rounded-lg p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sand font-medium">{ban.googleEmail}</p>
+                        <p className="text-sand/60 text-sm">
+                          {ban.googleName && <span>{ban.googleName} | </span>}
+                          Banned by {ban.bannedByUsername} on {new Date(ban.bannedAt).toLocaleDateString()}
+                        </p>
+                        {ban.reason && <p className="text-ember text-sm mt-1">Reason: {ban.reason}</p>}
+                      </div>
+                      <button
+                        onClick={() => handleUnbanAccount(ban.googleId)}
+                        className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
+                      >
+                        Unban
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-lg text-sand mb-3">All Users</h3>
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search by email, username, or name..."
+                className="w-full max-w-md bg-ink border border-sand/20 rounded px-3 py-2 text-sand focus:outline-none focus:border-lagoon mb-4"
+              />
+              {filteredUsers === undefined ? (
+                <p className="text-sand/60">Loading...</p>
+              ) : filteredUsers.length === 0 ? (
+                <p className="text-sand/60">No users found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredUsers.map((u) => {
+                    const isBanned = u.googleId ? bannedGoogleIds.has(u.googleId) : false;
+                    return (
+                      <div key={u._id} className={`bg-ink border rounded-lg p-3 ${isBanned ? "border-ember/50" : "border-sand/20"}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sand font-medium">{u.username}</p>
+                              {u.isSuperAdmin && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400">Super Admin</span>
+                              )}
+                              {u.isAdmin && !u.isSuperAdmin && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-lagoon/20 text-lagoon">Admin</span>
+                              )}
+                              {isBanned && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-ember/20 text-ember">Banned</span>
+                              )}
+                            </div>
+                            <p className="text-sand/60 text-sm">{u.email}</p>
+                            {u.googleName && <p className="text-sand/40 text-sm">Google: {u.googleName}</p>}
+                          </div>
+                          {!u.isSuperAdmin && u.googleId && !isBanned && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={banReason[u._id] ?? ""}
+                                onChange={(e) => setBanReason({ ...banReason, [u._id]: e.target.value })}
+                                placeholder="Reason (optional)"
+                                className="w-40 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm focus:outline-none focus:border-lagoon"
+                              />
+                              <button
+                                onClick={() => handleBanUser(u._id)}
+                                className="text-sm px-3 py-1 bg-ember text-ink rounded hover:bg-ember/80"
+                              >
+                                Ban
+                              </button>
+                            </div>
+                          )}
+                          {!u.googleId && (
+                            <span className="text-sand/40 text-sm">No Google account</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

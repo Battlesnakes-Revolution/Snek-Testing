@@ -7,6 +7,7 @@ type User = {
   email: string;
   username: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 };
 
 type AuthContextType = {

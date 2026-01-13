@@ -51,6 +51,7 @@ export default defineSchema({
     passwordHash: v.optional(v.string()),
     username: v.string(),
     isAdmin: v.boolean(),
+    isSuperAdmin: v.optional(v.boolean()),
     createdAt: v.number(),
     googleId: v.optional(v.string()),
     googleName: v.optional(v.string()),
@@ -58,6 +59,17 @@ export default defineSchema({
     .index("by_emailLower", ["emailLower"])
     .index("by_username", ["username"])
     .index("by_googleId", ["googleId"]),
+
+  bannedGoogleAccounts: defineTable({
+    googleId: v.string(),
+    googleEmail: v.string(),
+    googleName: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    bannedBy: v.id("users"),
+    bannedAt: v.number(),
+  })
+    .index("by_googleId", ["googleId"])
+    .index("by_bannedAt", ["bannedAt"]),
 
   userSessions: defineTable({
     userId: v.id("users"),
