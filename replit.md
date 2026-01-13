@@ -31,7 +31,7 @@ The core data structures represent Battlesnake game state:
 - **Snake**: Contains id, name, health, body coordinates, head position, length, and optional metadata
 - **Board**: Dimensions, food positions, hazards, and array of snakes
 - **Game**: Optional game configuration including ruleset and timeout settings
-- **Tests Table**: Stores test scenarios with board state, expected safe moves, snake identification, and submitter info (ownerId)
+- **Tests Table**: Stores test scenarios with board state, expected safe moves, snake identification, submitter info (ownerId), and optional description
 - **TestRuns Table**: Tracks async test execution with status (running/completed/failed), results, and timing
 
 ### Security Features
