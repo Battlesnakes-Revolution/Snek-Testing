@@ -26,9 +26,13 @@ type Props = {
 };
 
 const SNAKE_COLORS = ["#43b047", "#e55b3c", "#4285f4", "#f4b400", "#9c27b0", "#00bcd4"];
+const YOU_SNAKE_COLOR = "#43b047";
 
-function getSnakeColor(snakes: Snake[], snakeIndex: number): string {
+function getSnakeColor(snakes: Snake[], snakeIndex: number, youId: string): string {
   const snake = snakes[snakeIndex];
+  if (snake.id === youId) {
+    return YOU_SNAKE_COLOR;
+  }
   if (snake.squad) {
     const firstWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
     return SNAKE_COLORS[firstWithSameSquad % SNAKE_COLORS.length];
@@ -48,7 +52,7 @@ function getCellContent(board: Board, x: number, y: number, youId: string) {
       const nextSegment = bodyIndex < snake.body.length - 1 ? snake.body[bodyIndex + 1] : null;
       return {
         type: isHead ? "head" : "body",
-        color: getSnakeColor(board.snakes, i),
+        color: getSnakeColor(board.snakes, i, youId),
         isYou,
         label,
         headEmoji: snake.headEmoji,
