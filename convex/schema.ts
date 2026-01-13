@@ -81,6 +81,7 @@ export default defineSchema({
     approvedBy: v.optional(v.id("users")),
     approvedAt: v.optional(v.number()),
     rejectionReason: v.optional(v.string()),
+    permaRejected: v.optional(v.boolean()),
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_ownerId", ["ownerId"])

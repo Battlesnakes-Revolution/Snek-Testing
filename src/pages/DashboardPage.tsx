@@ -52,6 +52,7 @@ type Test = {
   expectedSafeMoves: string[];
   status?: "pending" | "approved" | "rejected" | "private";
   rejectionReason?: string;
+  permaRejected?: boolean;
 };
 
 
@@ -68,6 +69,7 @@ export default function DashboardPage() {
   const createTest = useMutation(api.battlesnake.createUserTest);
   const updateTest = useMutation(api.battlesnake.updateUserTest);
   const deleteTest = useMutation(api.battlesnake.deleteUserTest);
+  const resubmitTest = useMutation(api.battlesnake.resubmitTest);
   const createCollection = useMutation(api.battlesnake.createCollection);
   const updateCollection = useMutation(api.battlesnake.updateCollection);
   const deleteCollection = useMutation(api.battlesnake.deleteCollection);
@@ -184,14 +186,24 @@ export default function DashboardPage() {
     await removeTestFromCollection({ token, collectionId: managingCollection, testId });
   };
 
-  const getStatusBadge = (status?: string) => {
+  const handleResubmit = async (id: Id<"tests">) => {
+    try {
+      await resubmitTest({ token, id });
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const getStatusBadge = (status?: string, permaRejected?: boolean) => {
     switch (status) {
       case "approved":
         return <span className="px-2 py-0.5 text-xs rounded bg-moss/20 text-moss">Approved</span>;
       case "pending":
         return <span className="px-2 py-0.5 text-xs rounded bg-clay/20 text-clay">Pending Review</span>;
       case "rejected":
-        return <span className="px-2 py-0.5 text-xs rounded bg-ember/20 text-ember">Rejected</span>;
+        return permaRejected 
+          ? <span className="px-2 py-0.5 text-xs rounded bg-ember/30 text-ember border border-ember/50">Perma-rejected</span>
+          : <span className="px-2 py-0.5 text-xs rounded bg-ember/20 text-ember">Rejected</span>;
       default:
         return null;
     }
@@ -298,9 +310,17 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                           <h3 className="text-lg font-semibold text-sand">{test.name}</h3>
-                          {getStatusBadge(test.status)}
+                          {getStatusBadge(test.status, test.permaRejected)}
                         </div>
                         <div className="flex items-center gap-2">
+                          {test.status === "rejected" && !test.permaRejected && (
+                            <button
+                              onClick={() => handleResubmit(test._id)}
+                              className="text-sm px-3 py-1 bg-moss text-ink rounded hover:bg-moss/80"
+                            >
+                              Resubmit
+                            </button>
+                          )}
                           <button
                             onClick={() => handleRunTest(test)}
                             disabled={running || !botUrl.trim()}
@@ -326,7 +346,10 @@ export default function DashboardPage() {
                         Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}
                       </p>
                       {test.status === "rejected" && test.rejectionReason && (
-                        <p className="text-ember text-sm mt-2">Rejection reason: {test.rejectionReason}</p>
+                        <p className="text-ember text-sm mt-2">
+                          Rejection reason: {test.rejectionReason}
+                          {test.permaRejected && <span className="ml-2">(Cannot be resubmitted)</span>}
+                        </p>
                       )}
                       {result && (
                         <div className={`mt-2 p-2 rounded text-sm ${passed ? "bg-moss/20 text-moss" : "bg-ember/20 text-ember"}`}>

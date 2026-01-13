@@ -619,6 +619,48 @@ export const rejectTest = mutation({
   },
 });
 
+export const permaRejectTest = mutation({
+  args: { token: v.string(), id: v.id("tests"), reason: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      rejectionReason: args.reason,
+      permaRejected: true,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const resubmitTest = mutation({
+  args: { token: v.string(), id: v.id("tests") },
+  handler: async (ctx, args) => {
+    const { userId } = await requireUserSession(ctx, args.token);
+    const test = await ctx.db.get(args.id);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+    if (test.ownerId !== userId) {
+      throw new Error("You don't have permission to resubmit this test.");
+    }
+    if (test.status !== "rejected") {
+      throw new Error("Only rejected tests can be resubmitted.");
+    }
+    if (test.permaRejected) {
+      throw new Error("This test has been permanently rejected and cannot be resubmitted.");
+    }
+    await ctx.db.patch(args.id, {
+      status: "pending",
+      rejectionReason: undefined,
+    });
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const makeTestPrivate = mutation({
   args: { token: v.string(), id: v.id("tests") },
   handler: async (ctx, args) => {

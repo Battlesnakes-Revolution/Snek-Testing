@@ -16,6 +16,8 @@ type Test = {
   expectedSafeMoves: string[];
   status?: string;
   submitterName?: string;
+  permaRejected?: boolean;
+  rejectionReason?: string;
 };
 
 type Coordinate = { x: number; y: number };
@@ -68,6 +70,7 @@ export default function AdminPage() {
   const privateTests = useQuery(api.battlesnake.listPrivateTests, token ? { token } : "skip");
   const approveTest = useMutation(api.battlesnake.approveTest);
   const rejectTest = useMutation(api.battlesnake.rejectTest);
+  const permaRejectTest = useMutation(api.battlesnake.permaRejectTest);
   const makeTestPrivate = useMutation(api.battlesnake.makeTestPrivate);
   const adminUpdateTest = useMutation(api.battlesnake.adminUpdateTest);
 
@@ -122,6 +125,18 @@ export default function AdminPage() {
 
   const handleReject = async (id: Id<"tests">) => {
     await rejectTest({ token, id, reason: rejectionReason[id] || undefined });
+    setRejectionReason((prev) => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  };
+
+  const handlePermaReject = async (id: Id<"tests">) => {
+    if (!confirm("Are you sure you want to permanently reject this test? The user will NOT be able to resubmit it.")) {
+      return;
+    }
+    await permaRejectTest({ token, id, reason: rejectionReason[id] || undefined });
     setRejectionReason((prev) => {
       const newState = { ...prev };
       delete newState[id];
@@ -248,6 +263,13 @@ export default function AdminPage() {
                       >
                         Reject
                       </button>
+                      <button
+                        onClick={() => handlePermaReject(test._id)}
+                        className="text-sm px-3 py-1 bg-ember/60 text-ink rounded hover:bg-ember/40 border border-ember"
+                        title="Permanently reject - user cannot resubmit"
+                      >
+                        Perma-reject
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -321,7 +343,14 @@ export default function AdminPage() {
                 {(rejectedTests as Test[]).map((test) => (
                   <div key={test._id} className="bg-ink border border-sand/20 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-sand">{test.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-sand">{test.name}</h3>
+                        {test.permaRejected && (
+                          <span className="px-2 py-0.5 text-xs rounded bg-ember/30 text-ember border border-ember/50">
+                            Perma-rejected
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setExpandedTest(expandedTest === test._id ? null : test._id)}
@@ -347,6 +376,9 @@ export default function AdminPage() {
                       Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")} | Board: {test.board.width}x{test.board.height}
                       {test.submitterName && <span className="ml-2 text-lagoon">| Submitted by: {test.submitterName}</span>}
                     </p>
+                    {test.rejectionReason && (
+                      <p className="text-ember text-sm mb-2">Reason: {test.rejectionReason}</p>
+                    )}
 
                     {expandedTest === test._id && (
                       <div className="my-4">
