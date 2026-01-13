@@ -6,6 +6,7 @@ type User = {
   id: string;
   email: string;
   username: string;
+  googleName?: string;
   isAdmin: boolean;
   isSuperAdmin: boolean;
 };

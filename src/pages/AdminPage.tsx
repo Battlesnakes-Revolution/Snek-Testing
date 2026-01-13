@@ -643,7 +643,7 @@ export default function AdminPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sand font-medium">{u.username}</p>
+                              <p className="text-sand font-medium">{u.googleName ?? u.username}</p>
                               {u.isSuperAdmin && (
                                 <span className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400">Super Admin</span>
                               )}

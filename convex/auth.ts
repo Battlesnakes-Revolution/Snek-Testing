@@ -214,7 +214,7 @@ export const createGoogleSession = internalMutation({
     return {
       ok: true,
       token,
-      user: { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin },
+      user: { id: user._id, email: user.email, username: user.username, googleName: user.googleName, isAdmin: user.isAdmin },
     };
   },
 });
@@ -267,7 +267,7 @@ export const login = mutation({
     return {
       ok: true,
       token,
-      user: { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin },
+      user: { id: user._id, email: user.email, username: user.username, googleName: user.googleName, isAdmin: user.isAdmin },
     };
   },
 });
@@ -304,7 +304,7 @@ export const getCurrentUser = query({
     if (!user) {
       return null;
     }
-    return { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin ?? false };
+    return { id: user._id, email: user.email, username: user.username, googleName: user.googleName, isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin ?? false };
   },
 });
 
@@ -452,7 +452,7 @@ export const listBannedAccounts = query({
         const admin = await ctx.db.get(ban.bannedBy);
         return {
           ...ban,
-          bannedByUsername: admin?.username ?? "Unknown",
+          bannedByUsername: admin?.googleName ?? admin?.username ?? "Unknown",
         };
       })
     );

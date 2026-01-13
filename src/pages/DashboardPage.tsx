@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import TestEditor from "../components/TestEditor";
+import BoardPreview from "../components/BoardPreview";
 import { useAsyncTestRun } from "../hooks/useAsyncTestRun";
 
 type Coordinate = { x: number; y: number };
@@ -81,6 +82,7 @@ export default function DashboardPage() {
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showNewCollection, setShowNewCollection] = useState(false);
   const [managingCollection, setManagingCollection] = useState<Id<"collections"> | null>(null);
+  const [showBoardForTest, setShowBoardForTest] = useState<Set<string>>(new Set());
 
   const collectionTests = useQuery(
     api.battlesnake.getCollectionTests,
@@ -240,7 +242,7 @@ export default function DashboardPage() {
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-sand">Dashboard</h1>
-            <p className="text-sand/60">Welcome, {user.username}</p>
+            <p className="text-sand/60">Welcome, {user.googleName ?? user.username}</p>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/" className="text-sand/60 hover:text-sand">Home</Link>
@@ -352,9 +354,28 @@ export default function DashboardPage() {
                       {test.description && (
                         <p className="text-sand/70 text-sm mb-1">{test.description}</p>
                       )}
-                      <p className="text-sand/60 text-sm">
-                        Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}
-                      </p>
+                      <div className="flex items-center gap-4 text-sand/60 text-sm">
+                        <span>Turn {test.turn} | Expected: {test.expectedSafeMoves.join(", ")}</span>
+                        <button
+                          onClick={() => {
+                            const next = new Set(showBoardForTest);
+                            if (next.has(test._id)) {
+                              next.delete(test._id);
+                            } else {
+                              next.add(test._id);
+                            }
+                            setShowBoardForTest(next);
+                          }}
+                          className="text-lagoon hover:underline text-sm"
+                        >
+                          {showBoardForTest.has(test._id) ? "Hide Board" : "Show Board"}
+                        </button>
+                      </div>
+                      {showBoardForTest.has(test._id) && (
+                        <div className="mt-3">
+                          <BoardPreview board={test.board} youId={test.youId} cellSize={24} />
+                        </div>
+                      )}
                       {test.status === "rejected" && test.rejectionReason && (
                         <p className="text-ember text-sm mt-2">
                           Rejection reason: {test.rejectionReason}

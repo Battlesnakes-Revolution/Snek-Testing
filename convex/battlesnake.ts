@@ -997,7 +997,7 @@ export const getCollectionBySlug = query({
     return {
       collection: {
         ...collection,
-        ownerName: owner?.username ?? "Unknown",
+        ownerName: owner?.googleName ?? owner?.username ?? "Unknown",
       },
       tests,
     };
