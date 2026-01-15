@@ -13,7 +13,8 @@ type Snake = {
   length: number;
   latency?: string;
   shout?: string;
-  squad?: string;
+  team?: string;
+  isKing?: boolean;
 };
 type Board = {
   height: number;
@@ -60,7 +61,8 @@ type EditableSnake = {
   id: string;
   name: string;
   health: number;
-  squad: string;
+  team: string;
+  isKing: boolean;
   head?: Coordinate;
   body: Coordinate[];
 };
@@ -79,7 +81,7 @@ type EditorStateSetter = Dispatch<SetStateAction<EditorState>>;
 
 type PlacementMode = "food" | "hazard" | "erase" | "snakeHead" | "snakeBody";
 
-const FALLBACK_SQUAD_COLORS = [
+const FALLBACK_TEAM_COLORS = [
   "#0ea5e9",
   "#f97316",
   "#84cc16",
@@ -101,7 +103,8 @@ const DEFAULT_EDITOR_STATE: EditorState = {
       id: "snake-a",
       name: "Alpha",
       health: 90,
-      squad: "alpha",
+      team: "alpha",
+      isKing: false,
       head: { x: 5, y: 5 },
       body: [{ x: 5, y: 5 }],
     },
@@ -257,7 +260,8 @@ export default function App() {
         head,
         body,
         length: body.length,
-        squad: snakeItem.squad || undefined,
+        team: snakeItem.team || undefined,
+        isKing: snakeItem.isKing || undefined,
       };
     });
 
@@ -356,7 +360,8 @@ export default function App() {
         id: snakeItem.id,
         name: snakeItem.name,
         health: snakeItem.health,
-        squad: snakeItem.squad ?? "",
+        team: snakeItem.team ?? "",
+        isKing: snakeItem.isKing ?? false,
         head: snakeItem.head,
         body: snakeItem.body,
       })),
@@ -602,8 +607,8 @@ function AdminPanel({
               Build Battlesnake tests visually.
             </h1>
             <p className="text-sm text-slate-600 max-w-2xl mt-2">
-              Click the grid to place snakes, food, or hazards. Assign squads to
-              group teams. Load existing tests to edit them.
+              Click the grid to place snakes, food, or hazards. Assign teams to
+              group snakes. Mark a snake as King if needed. Load existing tests to edit them.
             </p>
           </div>
           <button
@@ -712,7 +717,8 @@ function EditorControls({
       id: `snake-${index}`,
       name: `Snake ${index}`,
       health: 100,
-      squad: "",
+      team: "",
+      isKing: false,
       body: [],
     };
     setEditorState({
@@ -934,16 +940,30 @@ function EditorControls({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Squad</label>
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Team</label>
                   <input
-                    value={snakeItem.squad}
+                    value={snakeItem.team}
                     onChange={(event) =>
                       updateSnake(snakeItem.id, (current) => ({
                         ...current,
-                        squad: event.target.value,
+                        team: event.target.value,
                       }))
                     }
                     className="rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">King</label>
+                  <input
+                    type="checkbox"
+                    checked={snakeItem.isKing}
+                    onChange={(event) =>
+                      updateSnake(snakeItem.id, (current) => ({
+                        ...current,
+                        isKing: event.target.checked,
+                      }))
+                    }
+                    className="w-4 h-4 rounded border-slate-200"
                   />
                 </div>
               </div>
@@ -1130,7 +1150,8 @@ function BoardEditor({
                 body: snakeItem.body,
                 head: snakeItem.head ?? snakeItem.body[0],
                 length: snakeItem.body.length,
-                squad: snakeItem.squad,
+                team: snakeItem.team,
+                isKing: snakeItem.isKing,
               }))
               .filter((snakeItem) => Boolean(snakeItem.head)) as Snake[],
           }}
@@ -1248,13 +1269,13 @@ function BoardView({
         bodyIndex: number;
       }
     >();
-    const squadColors: Record<string, string> = {};
+    const teamColors: Record<string, string> = {};
     let colorIndex = 0;
     board.snakes.forEach((snakeItem, snakeIndex) => {
-      const squadKey = snakeItem.squad ?? `snake-${snakeIndex}`;
-      if (!squadColors[squadKey]) {
-        squadColors[squadKey] =
-          FALLBACK_SQUAD_COLORS[colorIndex % FALLBACK_SQUAD_COLORS.length];
+      const teamKey = snakeItem.team ?? `snake-${snakeIndex}`;
+      if (!teamColors[teamKey]) {
+        teamColors[teamKey] =
+          FALLBACK_TEAM_COLORS[colorIndex % FALLBACK_TEAM_COLORS.length];
         colorIndex += 1;
       }
       snakeItem.body.forEach((segment, bodyIndex) => {
@@ -1262,7 +1283,7 @@ function BoardView({
         const isHead = bodyIndex === 0;
         snakeCells.set(key, {
           type: isHead ? "head" : "body",
-          color: squadColors[squadKey],
+          color: teamColors[teamKey],
           isYou: snakeItem.id === youId,
           snakeId: snakeItem.id,
           bodyIndex,

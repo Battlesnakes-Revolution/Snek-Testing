@@ -52,7 +52,8 @@ type Snake = {
   body: Coordinate[];
   head: Coordinate;
   length: number;
-  squad?: string;
+  team?: string;
+  isKing?: boolean;
   headEmoji?: string;
   latency?: string;
   shout?: string;

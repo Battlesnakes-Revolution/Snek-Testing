@@ -8,7 +8,8 @@ type Snake = {
   body: Coordinate[];
   head: Coordinate;
   length: number;
-  squad?: string;
+  team?: string;
+  isKing?: boolean;
   headEmoji?: string;
   color?: string;
 };
@@ -37,9 +38,9 @@ function getSnakeColor(snakes: Snake[], snakeIndex: number, youId: string): stri
   if (snake.color) {
     return snake.color;
   }
-  if (snake.squad) {
-    const firstWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
-    return SNAKE_COLORS[firstWithSameSquad % SNAKE_COLORS.length];
+  if (snake.team) {
+    const firstWithSameTeam = snakes.findIndex((s) => s.team === snake.team);
+    return SNAKE_COLORS[firstWithSameTeam % SNAKE_COLORS.length];
   }
   return SNAKE_COLORS[snakeIndex % SNAKE_COLORS.length];
 }
@@ -60,7 +61,8 @@ function getCellContent(board: Board, x: number, y: number, youId: string) {
         isYou,
         label,
         headEmoji: snake.headEmoji,
-        squad: snake.squad,
+        team: snake.team,
+        isKing: snake.isKing,
         prevSegment,
         nextSegment,
       };
@@ -185,12 +187,12 @@ export default function BoardPreview({ board, youId, cellSize = 20 }: Props) {
                   >
                     {content.isYou ? "Y" : (content.headEmoji || content.label)}
                   </span>
-                  {content.squad && (
+                  {content.team && (
                     <span
                       className="text-white/90 font-medium drop-shadow-sm truncate max-w-full"
                       style={{ fontSize: `${Math.max(6, cellSize * 0.3)}px`, lineHeight: 1 }}
                     >
-                      {content.squad}
+                      {content.team}{content.isKing ? " 👑" : ""}
                     </span>
                   )}
                 </div>

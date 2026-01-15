@@ -11,7 +11,8 @@ type Snake = {
   length: number;
   latency?: string;
   shout?: string;
-  squad?: string;
+  team?: string;
+  isKing?: boolean;
   headEmoji?: string;
   color?: string;
 };
@@ -218,9 +219,9 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
     if (snake.color) {
       return snake.color;
     }
-    if (snake.squad) {
-      const firstSnakeWithSameSquad = snakes.findIndex((s) => s.squad === snake.squad);
-      return SNAKE_COLORS[firstSnakeWithSameSquad % SNAKE_COLORS.length];
+    if (snake.team) {
+      const firstSnakeWithSameTeam = snakes.findIndex((s) => s.team === snake.team);
+      return SNAKE_COLORS[firstSnakeWithSameTeam % SNAKE_COLORS.length];
     }
     return SNAKE_COLORS[snakeIndex % SNAKE_COLORS.length];
   };
@@ -423,17 +424,28 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
                       }}
                       className="w-16 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
                     />
-                    <label className="text-sand/60 text-xs ml-2">Squad:</label>
+                    <label className="text-sand/60 text-xs ml-2">Team:</label>
                     <input
                       type="text"
-                      value={snake.squad ?? ""}
+                      value={snake.team ?? ""}
                       onChange={(e) => {
                         const newSnakes = [...snakes];
-                        newSnakes[i] = { ...snake, squad: e.target.value || undefined };
+                        newSnakes[i] = { ...snake, team: e.target.value || undefined };
                         setSnakes(newSnakes);
                       }}
                       placeholder="Optional"
                       className="w-20 bg-night border border-sand/20 rounded px-2 py-1 text-sand text-sm"
+                    />
+                    <label className="text-sand/60 text-xs ml-2">King:</label>
+                    <input
+                      type="checkbox"
+                      checked={snake.isKing ?? false}
+                      onChange={(e) => {
+                        const newSnakes = [...snakes];
+                        newSnakes[i] = { ...snake, isKing: e.target.checked || undefined };
+                        setSnakes(newSnakes);
+                      }}
+                      className="w-4 h-4 rounded border-sand/20 bg-night text-lagoon focus:ring-lagoon"
                     />
                   </div>
                   <div className="flex items-center gap-2 mt-2">

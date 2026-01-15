@@ -18,7 +18,8 @@ type Snake = {
   length: number;
   latency?: string;
   shout?: string;
-  squad?: string;
+  team?: string;
+  isKing?: boolean;
 };
 type Board = {
   height: number;
