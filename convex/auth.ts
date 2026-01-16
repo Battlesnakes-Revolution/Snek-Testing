@@ -482,6 +482,7 @@ export const listAllUsers = query({
       createdAt: user.createdAt,
       bannedFromPendingTests: user.bannedFromPendingTests ?? false,
       bannedFromPublicCollections: user.bannedFromPublicCollections ?? false,
+      bannedFromEngine: user.bannedFromEngine ?? false,
     }));
   },
 });
@@ -490,7 +491,7 @@ export const toggleUserRestriction = mutation({
   args: {
     token: v.string(),
     targetUserId: v.id("users"),
-    restriction: v.union(v.literal("pendingTests"), v.literal("publicCollections")),
+    restriction: v.union(v.literal("pendingTests"), v.literal("publicCollections"), v.literal("engine")),
   },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx, args.token);
@@ -507,9 +508,13 @@ export const toggleUserRestriction = mutation({
       await ctx.db.patch(args.targetUserId, {
         bannedFromPendingTests: !targetUser.bannedFromPendingTests,
       });
-    } else {
+    } else if (args.restriction === "publicCollections") {
       await ctx.db.patch(args.targetUserId, {
         bannedFromPublicCollections: !targetUser.bannedFromPublicCollections,
+      });
+    } else if (args.restriction === "engine") {
+      await ctx.db.patch(args.targetUserId, {
+        bannedFromEngine: !targetUser.bannedFromEngine,
       });
     }
 

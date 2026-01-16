@@ -28,6 +28,7 @@ type UserRecord = {
   createdAt: number;
   bannedFromPendingTests: boolean;
   bannedFromPublicCollections: boolean;
+  bannedFromEngine: boolean;
 };
 
 type Test = {
@@ -197,7 +198,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleToggleRestriction = async (userId: Id<"users">, restriction: "pendingTests" | "publicCollections") => {
+  const handleToggleRestriction = async (userId: Id<"users">, restriction: "pendingTests" | "publicCollections" | "engine") => {
     if (!token) return;
     const result = await toggleUserRestriction({ token, targetUserId: userId, restriction });
     if (!result.ok) {
@@ -660,6 +661,9 @@ export default function AdminPage() {
                               {u.bannedFromPublicCollections && (
                                 <span className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-400">No Public Collections</span>
                               )}
+                              {u.bannedFromEngine && (
+                                <span className="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-400">No Engine</span>
+                              )}
                             </div>
                             <p className="text-sand/60 text-sm">{u.email}</p>
                             {u.googleName && <p className="text-sand/40 text-sm">Google: {u.googleName}</p>}
@@ -680,6 +684,13 @@ export default function AdminPage() {
                                   title={u.bannedFromPublicCollections ? "Allow public collections" : "Ban from public collections"}
                                 >
                                   {u.bannedFromPublicCollections ? "Allow Public" : "Ban Public"}
+                                </button>
+                                <button
+                                  onClick={() => handleToggleRestriction(u._id, "engine")}
+                                  className={`text-xs px-2 py-1 rounded ${u.bannedFromEngine ? "bg-purple-500/30 text-purple-300 hover:bg-purple-500/50" : "bg-sand/10 text-sand/60 hover:bg-sand/20"}`}
+                                  title={u.bannedFromEngine ? "Allow engine usage" : "Ban from engine usage"}
+                                >
+                                  {u.bannedFromEngine ? "Allow Engine" : "Ban Engine"}
                                 </button>
                               </div>
                             )}

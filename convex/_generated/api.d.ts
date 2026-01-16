@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as battlesnake from "../battlesnake.js";
+import type * as engine from "../engine.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   battlesnake: typeof battlesnake;
+  engine: typeof engine;
 }>;
 
 /**

@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useAction, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useAuth } from "../contexts/AuthContext";
 
 type Coordinate = { x: number; y: number };
 type Snake = {
@@ -94,6 +97,12 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
   const [tool, setTool] = useState<"food" | "hazard" | "snake-head" | "snake-body" | "eraser">("food");
   const [selectedSnakeIndex, setSelectedSnakeIndex] = useState(0);
   const [makePrivate, setMakePrivate] = useState(false);
+  const [engineAnalysing, setEngineAnalysing] = useState(false);
+  const [engineResult, setEngineResult] = useState<{ ok: boolean; error?: string; analysis?: unknown } | null>(null);
+
+  const { token } = useAuth();
+  const engineAccess = useQuery(api.engine.checkEngineAccess, token ? { token } : "skip");
+  const analyseWithEngine = useAction(api.engine.analyseWithEngine);
 
   const handleCellClick = (x: number, y: number) => {
     if (tool === "food") {
@@ -212,6 +221,46 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
       expectedSafeMoves,
       makePrivate: showMakePrivate ? makePrivate : undefined,
     });
+  };
+
+  const handleEngineAnalyse = async () => {
+    if (!token) {
+      alert("Please log in to use engine analysis");
+      return;
+    }
+    const unplacedSnakes = snakes.filter((s) => s.body.length === 0);
+    if (unplacedSnakes.length > 0) {
+      alert(`Please place all snakes on the board first. Unplaced: ${unplacedSnakes.map((s) => s.name).join(", ")}`);
+      return;
+    }
+    const youSnake = snakes.find((s) => s.id === youId);
+    if (!youSnake || youSnake.body.length === 0) {
+      alert("Please place your snake on the board first");
+      return;
+    }
+
+    setEngineAnalysing(true);
+    setEngineResult(null);
+
+    try {
+      const result = await analyseWithEngine({
+        token,
+        board: {
+          width: boardWidth,
+          height: boardHeight,
+          food,
+          hazards,
+          snakes,
+        },
+        turn,
+        youId,
+      });
+      setEngineResult(result);
+    } catch (error) {
+      setEngineResult({ ok: false, error: error instanceof Error ? error.message : "Unknown error" });
+    } finally {
+      setEngineAnalysing(false);
+    }
   };
 
   const getSnakeColor = (snakeIndex: number) => {
@@ -525,7 +574,7 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
             </div>
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             {showMakePrivate && (
               <label className="flex items-center gap-2 text-sand/80 mr-4">
                 <input
@@ -549,7 +598,45 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
             >
               Cancel
             </button>
+            {token && (
+              <button
+                onClick={handleEngineAnalyse}
+                disabled={engineAnalysing || (engineAccess && !engineAccess.canUse)}
+                className={`px-4 py-2 rounded ${
+                  engineAnalysing || (engineAccess && !engineAccess.canUse)
+                    ? "bg-purple-500/30 text-purple-300 cursor-not-allowed"
+                    : "bg-purple-600 text-white hover:bg-purple-500"
+                }`}
+                title={
+                  engineAccess?.usageRemaining === -1
+                    ? "Unlimited (Super Admin)"
+                    : engineAccess?.usageRemaining !== undefined
+                    ? `${engineAccess.usageRemaining} uses remaining this month`
+                    : "Loading..."
+                }
+              >
+                {engineAnalysing ? "Analysing..." : "Engine Analyse"}
+                {engineAccess?.usageRemaining !== undefined && engineAccess.usageRemaining !== -1 && (
+                  <span className="ml-1 text-xs opacity-75">({engineAccess.usageRemaining}/5)</span>
+                )}
+              </button>
+            )}
           </div>
+
+          {engineResult && (
+            <div className={`mt-4 p-3 rounded border ${engineResult.ok ? "bg-moss/10 border-moss/30" : "bg-ember/10 border-ember/30"}`}>
+              <h4 className={`font-semibold mb-2 ${engineResult.ok ? "text-moss" : "text-ember"}`}>
+                {engineResult.ok ? "Engine Analysis Result" : "Engine Error"}
+              </h4>
+              {engineResult.ok && engineResult.analysis ? (
+                <pre className="text-sand text-sm whitespace-pre-wrap overflow-x-auto max-h-60 overflow-y-auto">
+                  {JSON.stringify(engineResult.analysis, null, 2)}
+                </pre>
+              ) : (
+                <p className="text-ember text-sm">{engineResult.error}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
