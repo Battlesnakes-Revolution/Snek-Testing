@@ -76,6 +76,34 @@ To make a user a super admin:
 - Super admins can also unban accounts from the same interface
 - Super admins cannot ban other super admins
 
+### Engine Analysis Feature
+The platform includes an external engine analysis feature that allows users to get AI-powered move suggestions for test scenarios.
+
+**Usage Limits:**
+- Regular users: 5 uses per month (resets monthly)
+- Super admins: Unlimited usage
+- Banned users: Cannot use the engine
+
+**Environment Variables (set in Convex dashboard):**
+- `ENGINE_ANALYSE_URL`: The URL of the external engine analysis API
+- `ENGINE_ANALYSE_PASSWORD`: The password/API key sent as `passwrd` field in requests
+
+**Admin Controls:**
+- Super admins can ban/unban users from engine usage via "Ban Engine" / "Allow Engine" buttons in User Management
+- The `bannedFromEngine` field on users table tracks this restriction
+
+**API Payload Format:**
+The engine receives a POST request with:
+```json
+{
+  "game": { "id": "...", "ruleset": {...}, "timeout": 500 },
+  "turn": 0,
+  "board": { "width": 11, "height": 11, "food": [...], "hazards": [...], "snakes": [...] },
+  "you": { "id": "...", "name": "...", "health": 100, ... },
+  "passwrd": "configured-password"
+}
+```
+
 ## External Dependencies
 
 ### Core Services
