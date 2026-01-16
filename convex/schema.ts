@@ -12,6 +12,7 @@ const snake = v.object({
   latency: v.optional(v.string()),
   shout: v.optional(v.string()),
   team: v.optional(v.string()),
+  squad: v.optional(v.string()),
   isKing: v.optional(v.boolean()),
   headEmoji: v.optional(v.string()),
   color: v.optional(v.string()),
