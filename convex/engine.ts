@@ -169,11 +169,40 @@ export const analyseWithEngine = action({
     }
 
     try {
+      const kings: string[] = [];
+      const formattedSnakes = args.board.snakes.map(s => {
+        if (s.isKing) {
+          kings.push(s.id);
+        }
+        const team = s.team ?? s.squad ?? "";
+        return {
+          id: s.id,
+          name: s.name,
+          health: s.health,
+          body: s.body,
+          head: s.head,
+          length: s.length,
+          squad: s.squad ?? "",
+          team: team,
+          king: s.isKing ?? false,
+        };
+      });
+
+      const youFormatted = formattedSnakes.find(s => s.id === args.youId);
+
       const payload = {
         game: args.game ?? { id: "test", ruleset: { name: "standard", version: "v1.1.0" }, timeout: 500 },
         turn: args.turn,
-        board: args.board,
-        you: youSnake,
+        board: {
+          height: args.board.height,
+          width: args.board.width,
+          food: args.board.food,
+          hazards: args.board.hazards,
+          snakes: formattedSnakes,
+        },
+        you: youFormatted,
+        kings,
+        player_to_observe: args.youId,
         passwrd: enginePassword,
       };
 

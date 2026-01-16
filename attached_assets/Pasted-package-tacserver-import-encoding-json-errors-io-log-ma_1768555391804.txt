@@ -1,0 +1,1003 @@
+package tacserver
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"math"
+	"math/rand"
+	"net/http"
+	"os"
+	"runtime"
+	"sort"
+	"strconv"
+	"sync"
+	"time"
+)
+
+const (
+	defaultBudgetSeconds = 7
+)
+
+// Direction represents a movement direction on the board.
+type Direction string
+
+const (
+	Up    Direction = "up"
+	Down  Direction = "down"
+	Left  Direction = "left"
+	Right Direction = "right"
+)
+
+// Point represents a coordinate on the board.
+type Point struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+// Snake captures the subset of Battlesnake properties we need.
+type Snake struct {
+	ID     string  `json:"id"`
+	Name   string  `json:"name"`
+	Health int     `json:"health"`
+	Body   []Point `json:"body"`
+	Head   Point   `json:"head"`
+	Length int     `json:"length"`
+	Team   string  `json:"team"`
+	King   bool    `json:"king"`
+}
+
+// Board models the Battlesnake board payload.
+type Board struct {
+	Width           int     `json:"width"`
+	Height          int     `json:"height"`
+	Food            []Point `json:"food"`
+	Hazards         []Point `json:"hazards"`
+	Snakes          []Snake `json:"snakes"`
+	PlayerToObserve string  `json:"player_to_observe"`
+}
+
+// Clone creates a deep copy of the board.
+func (b Board) Clone() Board {
+	cloned := b
+	cloned.Snakes = make([]Snake, len(b.Snakes))
+	for i, s := range b.Snakes {
+		bodyCopy := make([]Point, len(s.Body))
+		copy(bodyCopy, s.Body)
+		cloned.Snakes[i] = s
+		cloned.Snakes[i].Body = bodyCopy
+		cloned.Snakes[i].Head = s.Head
+	}
+	cloned.Food = append([]Point(nil), b.Food...)
+	cloned.Hazards = append([]Point(nil), b.Hazards...)
+	return cloned
+}
+
+// FindSnake returns the index of a snake by ID.
+func (b Board) FindSnake(id string) int {
+	for i, s := range b.Snakes {
+		if s.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// LegalMoves returns the legal moves for a given snake considering only bounds.
+func (b Board) LegalMoves(s Snake) []Direction {
+	moves := []Direction{Up, Down, Left, Right}
+	legal := make([]Direction, 0, len(moves))
+	for _, d := range moves {
+		next := movePointLocal(s.Head, d)
+		if next.X < 0 || next.X >= b.Width || next.Y < 0 || next.Y >= b.Height {
+			continue
+		}
+		legal = append(legal, d)
+	}
+	if len(legal) == 0 {
+		return moves
+	}
+	return legal
+}
+
+// ApplyMoves advances the board state by one turn, following KingSnek rules.
+func (b Board) ApplyMoves(moves map[string]Direction) Board {
+	next := b.Clone()
+	playerInfo := make(map[string]Snake, len(b.Snakes))
+	for _, s := range b.Snakes {
+		playerInfo[s.ID] = s
+	}
+
+	alive := make([]Snake, 0, len(b.Snakes))
+	for i, s := range next.Snakes {
+		allowed := adjacentPoints(b.Snakes[i].Head, b.Width, b.Height)
+		move, ok := moves[s.ID]
+		if !ok || !pointInSlice(movePointLocal(s.Head, move), allowed) {
+			move = defaultMove(b.Snakes[i], allowed, b.Width)
+		}
+		newHead := movePointLocal(s.Head, move)
+		newBody := append([]Point{newHead}, s.Body...)
+		newBody = newBody[:len(newBody)-1]
+		s.Body = newBody
+		s.Head = newHead
+		alive = append(alive, s)
+	}
+	next.Snakes = alive
+
+	dead := map[string]struct{}{}
+	for _, s := range next.Snakes {
+		if isWallPoint(s.Head, b.Width, b.Height) {
+			dead[s.ID] = struct{}{}
+			continue
+		}
+		if pointInSlice(s.Head, b.Hazards) {
+			dead[s.ID] = struct{}{}
+			continue
+		}
+		for i := 1; i < len(s.Body); i++ {
+			if s.Body[i] == s.Head {
+				dead[s.ID] = struct{}{}
+				break
+			}
+		}
+	}
+
+	occupied := map[Point][]string{}
+	headPositions := map[Point][]string{}
+	for _, s := range next.Snakes {
+		for i, p := range s.Body {
+			occupied[p] = append(occupied[p], s.ID)
+			if i == 0 {
+				headPositions[p] = append(headPositions[p], s.ID)
+			}
+		}
+	}
+	for p, heads := range headPositions {
+		if len(heads) > 1 {
+			minLen := int(^uint(0) >> 1)
+			for _, id := range heads {
+				if l := snakeLength(next.Snakes, id); l < minLen {
+					minLen = l
+				}
+			}
+			for _, id := range heads {
+				if snakeLength(next.Snakes, id) == minLen {
+					dead[id] = struct{}{}
+				}
+			}
+			continue
+		}
+		headID := heads[0]
+		others := 0
+		for _, id := range occupied[p] {
+			if id != headID {
+				others++
+			}
+		}
+		if others > 0 {
+			dead[headID] = struct{}{}
+		}
+	}
+
+	next.Snakes = filterAlive(next.Snakes, dead)
+
+	for i := range next.Snakes {
+		s := &next.Snakes[i]
+		if idx := indexOfPoint(next.Food, s.Head); idx != -1 {
+			next.Food = append(next.Food[:idx], next.Food[idx+1:]...)
+			if len(s.Body) > 0 {
+				s.Body = append(s.Body, s.Body[len(s.Body)-1])
+			}
+			s.Health = 100
+		} else {
+			s.Health--
+			if s.Health <= 0 {
+				dead[s.ID] = struct{}{}
+			}
+		}
+	}
+
+	next.Snakes = filterAlive(next.Snakes, dead)
+
+	teamToRemove := map[string]struct{}{}
+	for id := range dead {
+		info, ok := playerInfo[id]
+		if !ok {
+			continue
+		}
+		if info.King && info.Team != "" {
+			teamToRemove[info.Team] = struct{}{}
+		}
+	}
+	if len(teamToRemove) > 0 {
+		pruned := next.Snakes[:0]
+		for _, s := range next.Snakes {
+			if _, doomed := teamToRemove[s.Team]; doomed {
+				dead[s.ID] = struct{}{}
+				continue
+			}
+			pruned = append(pruned, s)
+		}
+		next.Snakes = pruned
+	}
+
+	if rand.Float64() < 0.5 {
+		free := freePositions(next.Width, next.Height, next.Snakes, next.Food, next.Hazards)
+		if len(free) > 0 {
+			next.Food = append(next.Food, free[rand.Intn(len(free))])
+		}
+	}
+
+	return next
+}
+
+func adjacentPoints(p Point, width, height int) []Point {
+	candidates := []Point{
+		{X: p.X, Y: p.Y + 1},
+		{X: p.X, Y: p.Y - 1},
+		{X: p.X - 1, Y: p.Y},
+		{X: p.X + 1, Y: p.Y},
+	}
+	points := make([]Point, 0, 4)
+	for _, c := range candidates {
+		if c.X >= 0 && c.X < width && c.Y >= 0 && c.Y < height {
+			points = append(points, c)
+		}
+	}
+	return points
+}
+
+func pointInSlice(p Point, points []Point) bool {
+	for _, candidate := range points {
+		if candidate == p {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultMove(s Snake, allowed []Point, width int) Direction {
+	if len(s.Body) > 1 {
+		neck := s.Body[1]
+		dx := s.Head.X - neck.X
+		dy := s.Head.Y - neck.Y
+		return directionFromDelta(dx, dy)
+	}
+	if len(allowed) > 0 {
+		return directionToPoint(s.Head, allowed[0])
+	}
+	return Right
+}
+
+func directionFromDelta(dx, dy int) Direction {
+	switch {
+	case dx == 1 && dy == 0:
+		return Right
+	case dx == -1 && dy == 0:
+		return Left
+	case dx == 0 && dy == 1:
+		return Up
+	case dx == 0 && dy == -1:
+		return Down
+	default:
+		return Right
+	}
+}
+
+func directionToPoint(from, to Point) Direction {
+	switch {
+	case to.X == from.X && to.Y == from.Y+1:
+		return Up
+	case to.X == from.X && to.Y == from.Y-1:
+		return Down
+	case to.X == from.X-1 && to.Y == from.Y:
+		return Left
+	case to.X == from.X+1 && to.Y == from.Y:
+		return Right
+	default:
+		return Right
+	}
+}
+
+func isWallPoint(p Point, width, height int) bool {
+	return p.X == 0 || p.Y == 0 || p.X == width-1 || p.Y == height-1
+}
+
+func indexOfPoint(points []Point, target Point) int {
+	for i, p := range points {
+		if p == target {
+			return i
+		}
+	}
+	return -1
+}
+
+func snakeLength(snakes []Snake, id string) int {
+	for _, s := range snakes {
+		if s.ID == id {
+			return len(s.Body)
+		}
+	}
+	return 0
+}
+
+func filterAlive(snakes []Snake, dead map[string]struct{}) []Snake {
+	if len(dead) == 0 {
+		return snakes
+	}
+	alive := make([]Snake, 0, len(snakes))
+	for _, s := range snakes {
+		if _, doomed := dead[s.ID]; doomed {
+			continue
+		}
+		alive = append(alive, s)
+	}
+	return alive
+}
+
+func freePositions(width, height int, snakes []Snake, food []Point, hazards []Point) []Point {
+	occupied := map[Point]struct{}{}
+	for _, s := range snakes {
+		for _, p := range s.Body {
+			occupied[p] = struct{}{}
+		}
+	}
+	for _, p := range food {
+		occupied[p] = struct{}{}
+	}
+	for _, p := range hazards {
+		occupied[p] = struct{}{}
+	}
+
+	free := make([]Point, 0)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			p := Point{X: x, Y: y}
+			if isWallPoint(p, width, height) {
+				continue
+			}
+			if _, ok := occupied[p]; ok {
+				continue
+			}
+			free = append(free, p)
+		}
+	}
+	return free
+}
+
+func movePointLocal(p Point, d Direction) Point {
+	switch d {
+	case Up:
+		return Point{X: p.X, Y: p.Y + 1}
+	case Down:
+		return Point{X: p.X, Y: p.Y - 1}
+	case Left:
+		return Point{X: p.X - 1, Y: p.Y}
+	case Right:
+		return Point{X: p.X + 1, Y: p.Y}
+	default:
+		return p
+	}
+}
+
+// SimulationResult tracks rollout outcomes.
+type SimulationResult struct {
+	Score             float64
+	ObservedDead      bool
+	ObservedDeathTurn int
+}
+
+// Node represents a game tree node for MCTS.
+type Node struct {
+	mu       sync.Mutex
+	State    Board
+	Parent   *Node
+	Move     Direction
+	Children map[Direction]*Node
+
+	Visits         int
+	TotalScore     float64
+	DeathCount     int
+	DeathTurnTotal int
+
+	untriedMoves []Direction
+	playerID     string
+	terminal     bool
+}
+
+// SearchResult summarizes findings from the search.
+type SearchResult struct {
+	BestLines            [][]Direction
+	GuaranteedDeathTurns int
+}
+
+// Search runs Monte Carlo Tree Search for the provided duration.
+func Search(rootState Board, timeBudget time.Duration) (SearchResult, error) {
+	if rootState.FindSnake(rootState.PlayerToObserve) == -1 {
+		return SearchResult{}, errors.New("player_to_observe not found among snakes")
+	}
+
+	root := newNode(rootState, nil, "", rootState.PlayerToObserve)
+	deadline := time.Now().Add(timeBudget)
+	workers := runtime.GOMAXPROCS(0)
+	if workers < 1 {
+		workers = 1
+	}
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		seed := time.Now().UnixNano() + int64(i)
+		go func(seed int64) {
+			defer wg.Done()
+			rng := rand.New(rand.NewSource(seed))
+			const timeCheckInterval = 64
+			for {
+				for j := 0; j < timeCheckInterval; j++ {
+					node := selectNode(root, rng)
+					outcome := simulate(node, rng)
+					backpropagate(node, outcome)
+				}
+				if time.Now().After(deadline) {
+					break
+				}
+			}
+		}(seed)
+	}
+	wg.Wait()
+
+	lines := extractBestLines(root, 3, 6)
+	guaranteed := computeGuaranteedDeath(root)
+	return SearchResult{BestLines: lines, GuaranteedDeathTurns: guaranteed}, nil
+}
+
+func newNode(state Board, parent *Node, move Direction, playerID string) *Node {
+	node := &Node{
+		State:    state,
+		Parent:   parent,
+		Move:     move,
+		Children: map[Direction]*Node{},
+		playerID: playerID,
+	}
+	node.untriedMoves = legalMovesFor(state, playerID)
+	if len(node.untriedMoves) == 0 {
+		node.terminal = true
+	}
+	return node
+}
+
+func legalMovesFor(state Board, playerID string) []Direction {
+	idx := state.FindSnake(playerID)
+	if idx == -1 {
+		return nil
+	}
+	return state.LegalMoves(state.Snakes[idx])
+}
+
+func selectNode(root *Node, rng *rand.Rand) *Node {
+	node := root
+	for {
+		node.mu.Lock()
+		if len(node.untriedMoves) > 0 {
+			child := expandLocked(node, rng)
+			node.mu.Unlock()
+			return child
+		}
+		if len(node.Children) == 0 {
+			node.mu.Unlock()
+			return node
+		}
+		parentVisits := node.Visits
+		children := make([]*Node, 0, len(node.Children))
+		for _, child := range node.Children {
+			children = append(children, child)
+		}
+		node.mu.Unlock()
+		node = bestUCTChild(children, parentVisits)
+	}
+}
+
+func expandLocked(node *Node, rng *rand.Rand) *Node {
+	idx := rng.Intn(len(node.untriedMoves))
+	last := len(node.untriedMoves) - 1
+	move := node.untriedMoves[idx]
+	node.untriedMoves[idx] = node.untriedMoves[last]
+	node.untriedMoves = node.untriedMoves[:last]
+
+	nextState := stepState(node.State, move, rng)
+	child := newNode(nextState, node, move, node.playerID)
+	node.Children[move] = child
+	return child
+}
+
+func bestUCTChild(children []*Node, parentVisits int) *Node {
+	var best *Node
+	bestScore := math.Inf(-1)
+	for _, child := range children {
+		child.mu.Lock()
+		childVisits := child.Visits
+		childScore := child.TotalScore
+		child.mu.Unlock()
+		if childVisits == 0 {
+			return child
+		}
+		exploitation := childScore / float64(childVisits)
+		exploration := math.Sqrt(2 * math.Log(float64(parentVisits+1)) / float64(childVisits))
+		score := exploitation + 1.4*exploration
+		if score > bestScore {
+			bestScore = score
+			best = child
+		}
+	}
+	if best == nil && len(children) > 0 {
+		return children[0]
+	}
+	return best
+}
+
+func simulate(node *Node, rng *rand.Rand) SimulationResult {
+	state := node.State.Clone()
+	observedIdx := state.FindSnake(node.playerID)
+	if observedIdx == -1 {
+		return SimulationResult{Score: 0, ObservedDead: true, ObservedDeathTurn: 0}
+	}
+
+	depthLimit := 12
+	observedDead := false
+	observedDeathTurn := depthLimit
+	teamMateDead := false
+	kingDead := false
+	observedTeam := state.Snakes[observedIdx].Team
+
+	for turn := 0; turn < depthLimit; turn++ {
+		preSnakes := make(map[string]Snake, len(state.Snakes))
+		for _, s := range state.Snakes {
+			preSnakes[s.ID] = s
+		}
+		nextMoves := make(map[string]Direction, len(state.Snakes))
+		for _, s := range state.Snakes {
+			moves := legalMovesCached(state, s)
+			choice := moves[rng.Intn(len(moves))]
+			nextMoves[s.ID] = choice
+		}
+		state = state.ApplyMoves(nextMoves)
+
+		if idx := state.FindSnake(node.playerID); idx == -1 {
+			observedDead = true
+			observedDeathTurn = turn + 1
+		}
+
+		if len(preSnakes) != len(state.Snakes) {
+			alive := make(map[string]struct{}, len(state.Snakes))
+			for _, s := range state.Snakes {
+				alive[s.ID] = struct{}{}
+			}
+			for id, prev := range preSnakes {
+				if _, ok := alive[id]; ok {
+					continue
+				}
+				if prev.King && prev.Team != "" && prev.Team == observedTeam {
+					kingDead = true
+				}
+				if observedTeam != "" && prev.Team == observedTeam && id != node.playerID {
+					teamMateDead = true
+				}
+			}
+		}
+
+		if observedDead || kingDead {
+			break
+		}
+	}
+
+	score := 1.0
+	if teamMateDead {
+		score -= 1.0
+	}
+	if observedDead {
+		score -= 2.0
+	}
+	if kingDead {
+		score -= 3.0
+	}
+
+	return SimulationResult{
+		Score:             score,
+		ObservedDead:      observedDead,
+		ObservedDeathTurn: observedDeathTurn,
+	}
+}
+
+func backpropagate(node *Node, result SimulationResult) {
+	for n := node; n != nil; n = n.Parent {
+		n.mu.Lock()
+		n.Visits++
+		n.TotalScore += result.Score
+		if result.ObservedDead {
+			n.DeathCount++
+			n.DeathTurnTotal += result.ObservedDeathTurn
+		}
+		n.mu.Unlock()
+	}
+}
+
+func stepState(state Board, playerMove Direction, rng *rand.Rand) Board {
+	moves := make(map[string]Direction, len(state.Snakes))
+	for _, s := range state.Snakes {
+		if s.ID == state.PlayerToObserve {
+			moves[s.ID] = playerMove
+			continue
+		}
+		legal := legalMovesCached(state, s)
+		moves[s.ID] = legal[rng.Intn(len(legal))]
+	}
+	return state.ApplyMoves(moves)
+}
+
+func legalMovesCached(state Board, s Snake) []Direction {
+	moves := []Direction{Up, Down, Left, Right}
+	legal := make([]Direction, 0, len(moves))
+	for _, d := range moves {
+		next := movePointLocal(s.Head, d)
+		if next.X < 0 || next.X >= state.Width || next.Y < 0 || next.Y >= state.Height {
+			continue
+		}
+		legal = append(legal, d)
+	}
+	if len(legal) == 0 {
+		return moves
+	}
+	return legal
+}
+
+func extractBestLines(root *Node, count int, depth int) [][]Direction {
+	type candidate struct {
+		moves []Direction
+		score float64
+	}
+	candidates := make([]candidate, 0, len(root.Children))
+	for _, child := range root.Children {
+		avg := child.TotalScore
+		if child.Visits > 0 {
+			avg /= float64(child.Visits)
+		}
+		moves := []Direction{child.Move}
+		moves = append(moves, descendBest(child, depth-1)...)
+		candidates = append(candidates, candidate{moves: moves, score: avg})
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+	limit := count
+	if len(candidates) < limit {
+		limit = len(candidates)
+	}
+	best := make([][]Direction, 0, limit)
+	for i := 0; i < limit; i++ {
+		best = append(best, candidates[i].moves)
+	}
+	return best
+}
+
+func descendBest(node *Node, depth int) []Direction {
+	if depth == 0 || len(node.Children) == 0 {
+		return nil
+	}
+	var best *Node
+	bestScore := math.Inf(-1)
+	for _, child := range node.Children {
+		score := child.TotalScore
+		if child.Visits > 0 {
+			score /= float64(child.Visits)
+		}
+		if score > bestScore {
+			bestScore = score
+			best = child
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	return append([]Direction{best.Move}, descendBest(best, depth-1)...)
+}
+
+func computeGuaranteedDeath(root *Node) int {
+	if len(root.Children) == 0 {
+		if root.DeathCount == root.Visits && root.Visits > 0 {
+			return averageDeathTurn(root)
+		}
+		return 0
+	}
+	guaranteed := true
+	minTurn := math.MaxInt32
+	for _, child := range root.Children {
+		if child.Visits == 0 {
+			guaranteed = false
+			continue
+		}
+		if child.DeathCount < child.Visits {
+			guaranteed = false
+		} else {
+			turn := averageDeathTurn(child)
+			if turn < minTurn {
+				minTurn = turn
+			}
+		}
+	}
+	if guaranteed && minTurn != math.MaxInt32 {
+		return minTurn
+	}
+	return 0
+}
+
+func averageDeathTurn(node *Node) int {
+	if node.DeathCount == 0 {
+		return 0
+	}
+	return int(math.Round(float64(node.DeathTurnTotal) / float64(node.DeathCount)))
+}
+
+type battlesnakeRequest struct {
+	Game struct {
+		ID      string `json:"id"`
+		Timeout int    `json:"timeout"`
+	} `json:"game"`
+	Turn  int `json:"turn"`
+	Board struct {
+		Height  int     `json:"height"`
+		Width   int     `json:"width"`
+		Food    []Point `json:"food"`
+		Hazards []Point `json:"hazards"`
+		Snakes  []snakeEntity `json:"snakes"`
+	} `json:"board"`
+	You             snakeEntity `json:"you"`
+	Kings           []string    `json:"kings"`
+	PlayerToObserve string      `json:"player_to_observe"`
+	Password        string      `json:"passwrd"`
+}
+
+type snakeEntity struct {
+	ID     string  `json:"id"`
+	Name   string  `json:"name"`
+	Health int     `json:"health"`
+	Body   []Point `json:"body"`
+	Head   Point   `json:"head"`
+	Length int     `json:"length"`
+	Squad  string  `json:"squad"`
+	Team   string  `json:"team"`
+	King   bool    `json:"king"`
+}
+
+type boardRequest struct {
+	Width           int     `json:"width"`
+	Height          int     `json:"height"`
+	Food            []Point `json:"food"`
+	Hazards         []Point `json:"hazards"`
+	Snakes          []Snake `json:"snakes"`
+	Kings           []string `json:"kings"`
+	PlayerToObserve string  `json:"player_to_observe"`
+}
+
+type infoResponse struct {
+	APIVersion string `json:"apiversion"`
+	Author     string `json:"author"`
+	Color      string `json:"color"`
+	Head       string `json:"head"`
+	Tail       string `json:"tail"`
+	Version    string `json:"version"`
+}
+
+type evaluationResponse struct {
+	BestLines            [][]Direction `json:"best_lines"`
+	GuaranteedDeathTurns int           `json:"guaranteed_death_turns"`
+}
+
+var (
+	muxOnce sync.Once
+	mux     *http.ServeMux
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	initMux()
+	mux.ServeHTTP(w, r)
+}
+
+func Engine(w http.ResponseWriter, r *http.Request) {
+	Handler(w, r)
+}
+
+func Evaluate(w http.ResponseWriter, r *http.Request) {
+	Handler(w, r)
+}
+
+func TacEngine(w http.ResponseWriter, r *http.Request) {
+	Handler(w, r)
+}
+
+func Move(w http.ResponseWriter, r *http.Request) {
+	moveHandler(w, r)
+}
+
+func initMux() {
+	muxOnce.Do(func() {
+		mux = http.NewServeMux()
+		mux.HandleFunc("/", infoHandler)
+		mux.HandleFunc("/start", okHandler)
+		mux.HandleFunc("/move", moveHandler)
+		mux.HandleFunc("/end", okHandler)
+	})
+}
+
+func infoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	resp := infoResponse{
+		APIVersion: "1",
+		Author:     "tacengine-single",
+		Color:      "#3B5BA7",
+		Head:       "fang",
+		Tail:       "bolt",
+		Version:    "0.1.0",
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func okHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func moveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	board, err := decodeBoard(r)
+	if err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	budget := parseBudget()
+	result, err := Search(board, budget)
+	if err != nil {
+		log.Printf("search error: %v", err)
+		writeJSON(w, http.StatusOK, evaluationResponse{})
+		return
+	}
+
+	resp := evaluationResponse{
+		BestLines:            result.BestLines,
+		GuaranteedDeathTurns: result.GuaranteedDeathTurns,
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func decodeBoard(r *http.Request) (Board, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return Board{}, err
+	}
+
+	var boardReq boardRequest
+	if err := json.Unmarshal(body, &boardReq); err == nil && boardReq.Width > 0 && boardReq.Height > 0 {
+		return buildBoardFromRequest(boardReq), nil
+	}
+
+	var req battlesnakeRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		return Board{}, err
+	}
+	return buildBoard(req), nil
+}
+
+func buildBoardFromRequest(req boardRequest) Board {
+	playerID := req.PlayerToObserve
+	if playerID == "" && len(req.Snakes) > 0 {
+		playerID = req.Snakes[0].ID
+	}
+
+	kingSet := map[string]struct{}{}
+	for _, id := range req.Kings {
+		kingSet[id] = struct{}{}
+	}
+
+	board := Board{
+		Width:           req.Width,
+		Height:          req.Height,
+		Food:            req.Food,
+		Hazards:         req.Hazards,
+		PlayerToObserve: playerID,
+		Snakes:          make([]Snake, len(req.Snakes)),
+	}
+
+	for i, s := range req.Snakes {
+		snake := s
+		if snake.Team == "" {
+			snake.King = false
+		}
+		if snake.Team != "" {
+			if _, ok := kingSet[snake.ID]; ok {
+				snake.King = true
+			}
+		}
+		board.Snakes[i] = snake
+	}
+
+	return board
+}
+
+func buildBoard(req battlesnakeRequest) Board {
+	playerID := req.PlayerToObserve
+	if playerID == "" {
+		playerID = req.You.ID
+	}
+
+	kingSet := map[string]struct{}{}
+	for _, id := range req.Kings {
+		kingSet[id] = struct{}{}
+	}
+
+	board := Board{
+		Width:           req.Board.Width,
+		Height:          req.Board.Height,
+		Food:            req.Board.Food,
+		Hazards:         req.Board.Hazards,
+		PlayerToObserve: playerID,
+	}
+
+	board.Snakes = make([]Snake, 0, len(req.Board.Snakes))
+	for _, s := range req.Board.Snakes {
+		team := s.Team
+		if team == "" {
+			team = s.Squad
+		}
+		snake := Snake{
+			ID:     s.ID,
+			Name:   s.Name,
+			Health: s.Health,
+			Body:   s.Body,
+			Head:   s.Head,
+			Length: s.Length,
+			Team:   team,
+		}
+		if team != "" {
+			if s.King {
+				snake.King = true
+			}
+			if _, ok := kingSet[s.ID]; ok {
+				snake.King = true
+			}
+		}
+		board.Snakes = append(board.Snakes, snake)
+	}
+
+	return board
+}
+
+func parseBudget() time.Duration {
+	if raw := os.Getenv("BUDGET_SECONDS"); raw != "" {
+		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+			return time.Duration(secs) * time.Second
+		}
+	}
+	return time.Duration(defaultBudgetSeconds) * time.Second
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(payload); err != nil {
+		log.Printf("encode failed: %v", err)
+	}
+}
