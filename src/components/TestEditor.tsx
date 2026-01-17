@@ -657,22 +657,6 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
                           </div>
                         </div>
                       )}
-                      <div>
-                        <h5 className="text-sand font-medium mb-1">Guaranteed Death Turns:</h5>
-                        <span className={`px-2 py-1 rounded text-sm font-mono ${
-                          analysis.guaranteed_death_turns === 0 
-                            ? "bg-moss/30 text-moss" 
-                            : "bg-ember/30 text-ember"
-                        }`}>
-                          {analysis.guaranteed_death_turns ?? 0}
-                        </span>
-                        {analysis.guaranteed_death_turns === 0 && (
-                          <span className="text-moss text-sm ml-2">No guaranteed death detected</span>
-                        )}
-                        {analysis.guaranteed_death_turns !== undefined && analysis.guaranteed_death_turns > 0 && (
-                          <span className="text-ember text-sm ml-2">Death in {analysis.guaranteed_death_turns} turn{analysis.guaranteed_death_turns !== 1 ? 's' : ''}</span>
-                        )}
-                      </div>
                     </div>
                   );
                 })()
