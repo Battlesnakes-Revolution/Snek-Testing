@@ -629,9 +629,53 @@ export default function TestEditor({ initialData, onSave, onCancel, showMakePriv
                 {engineResult.ok ? "Engine Analysis Result" : "Engine Error"}
               </h4>
               {engineResult.ok && engineResult.analysis ? (
-                <pre className="text-sand text-sm whitespace-pre-wrap overflow-x-auto max-h-60 overflow-y-auto">
-                  {JSON.stringify(engineResult.analysis, null, 2)}
-                </pre>
+                (() => {
+                  const analysis = engineResult.analysis as { best_lines?: string[][]; guaranteed_death_turns?: number };
+                  return (
+                    <div className="space-y-3">
+                      {analysis.best_lines && analysis.best_lines.length > 0 && (
+                        <div>
+                          <h5 className="text-sand font-medium mb-1">Best Lines:</h5>
+                          <div className="space-y-1">
+                            {analysis.best_lines.map((line, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="text-clay text-sm">{idx + 1}.</span>
+                                <div className="flex gap-1">
+                                  {line.map((move, moveIdx) => (
+                                    <span
+                                      key={moveIdx}
+                                      className={`px-2 py-0.5 rounded text-sm font-mono ${
+                                        moveIdx === 0 ? "bg-lagoon/30 text-lagoon" : "bg-night/50 text-sand"
+                                      }`}
+                                    >
+                                      {move}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <h5 className="text-sand font-medium mb-1">Guaranteed Death Turns:</h5>
+                        <span className={`px-2 py-1 rounded text-sm font-mono ${
+                          analysis.guaranteed_death_turns === 0 
+                            ? "bg-moss/30 text-moss" 
+                            : "bg-ember/30 text-ember"
+                        }`}>
+                          {analysis.guaranteed_death_turns ?? 0}
+                        </span>
+                        {analysis.guaranteed_death_turns === 0 && (
+                          <span className="text-moss text-sm ml-2">No guaranteed death detected</span>
+                        )}
+                        {analysis.guaranteed_death_turns !== undefined && analysis.guaranteed_death_turns > 0 && (
+                          <span className="text-ember text-sm ml-2">Death in {analysis.guaranteed_death_turns} turn{analysis.guaranteed_death_turns !== 1 ? 's' : ''}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 <p className="text-ember text-sm">{engineResult.error}</p>
               )}

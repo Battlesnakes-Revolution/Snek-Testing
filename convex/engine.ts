@@ -151,12 +151,14 @@ export const analyseWithEngine = action({
     youId: v.string(),
   },
   handler: async (ctx, args): Promise<{ ok: boolean; error?: string; analysis?: unknown }> => {
-    const engineUrl = process.env.ENGINE_ANALYSE_URL;
+    const rawEngineUrl = process.env.ENGINE_ANALYSE_URL;
     const enginePassword = process.env.ENGINE_ANALYSE_PASSWORD;
 
-    if (!engineUrl) {
+    if (!rawEngineUrl) {
       return { ok: false, error: "Engine URL is not configured." };
     }
+
+    const engineUrl = rawEngineUrl.replace(/\/+$/, "");
 
     const youSnake = args.board.snakes.find(s => s.id === args.youId);
     if (!youSnake) {
